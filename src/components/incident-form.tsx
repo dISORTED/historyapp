@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import { es } from 'date-fns/locale'
 import { createIncident } from '@/lib/incidents'
 import { CreateIncidentInput } from '@/lib/types'
 
@@ -24,6 +27,11 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleDateChange = (date: Date | null) => {
+    const dateString = date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    setFormData((prev) => ({ ...prev, resolution_date: dateString }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,13 +65,14 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
         <div>
           <label>Fecha de resolución </label>
-          <input
-            type="date"
-            name="resolution_date"
-            value={formData.resolution_date}
-            onChange={handleChange}
+          <DatePicker
+            selected={new Date(formData.resolution_date)}
+            onChange={handleDateChange}
+            dateFormat="yyyy-MM-dd"
+            locale={es}
+            className="custom-datepicker"
+            calendarClassName="custom-calendar"
             required
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>
         <div>

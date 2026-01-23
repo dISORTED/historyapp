@@ -117,3 +117,65 @@ details > summary::-webkit-details-marker {
     font-size: 12px;
   }
 }
+
+/* Estilos para react-datepicker dark theme */
+.custom-datepicker {
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.custom-datepicker:focus {
+  outline: none;
+  border-color: var(--accent-focus);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
+}
+
+.custom-calendar {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px !important;
+}
+
+.custom-calendar .react-datepicker__header {
+  background: var(--bg-hover) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.custom-calendar .react-datepicker__current-month,
+.custom-calendar .react-datepicker-time__header {
+  color: var(--text-primary) !important;
+}
+
+.custom-calendar .react-datepicker__day-name,
+.custom-calendar .react-datepicker__day {
+  color: var(--text-primary) !important;
+}
+
+.custom-calendar .react-datepicker__day:hover {
+  background: var(--bg-hover) !important;
+}
+
+.custom-calendar .react-datepicker__day--selected {
+  background: var(--accent-primary) !important;
+  color: var(--bg-main) !important;
+}
+
+.custom-calendar .react-datepicker__day--keyboard-selected {
+  background: var(--accent-focus) !important;
+}
+
+.custom-calendar .react-datepicker__navigation {
+  border: none !important;
+}
+
+.custom-calendar .react-datepicker__navigation-icon::before {
+  border-color: var(--text-primary) !important;
+}

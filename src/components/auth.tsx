@@ -95,12 +95,6 @@ export default function AuthComponent() {
           {mode === 'signin' ? '¿No tienes cuenta?' : 'Volver a iniciar sesión'}
         </button>
       </form>
-
-      <div style={{ marginTop: '20px', textAlign: 'center' }}>
-        <button onClick={handleSignOut} style={{ cursor: 'pointer' }}>
-          Cerrar sesión
-        </button>
-      </div>
     </div>
   )
 }
