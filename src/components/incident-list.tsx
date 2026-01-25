@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import { es } from 'date-fns/locale'
 import { Incident } from '@/lib/types'
 import { getIncidents } from '@/lib/incidents'
 import IncidentDetail from './incident-detail'
@@ -13,14 +16,18 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateFrom, setDateFrom] = useState<Date | null>(null)
+  const [dateTo, setDateTo] = useState<Date | null>(null)
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null)
 
   const loadIncidents = async () => {
     setLoading(true)
     try {
-      const data = await getIncidents(searchTerm, dateFrom || null, dateTo || null)
+      const data = await getIncidents(
+        searchTerm,
+        dateFrom ? dateFrom.toISOString().split('T')[0] : null,
+        dateTo ? dateTo.toISOString().split('T')[0] : null
+      )
       setIncidents(data || [])
     } catch (err) {
       console.error('Error al cargar incidencias:', err)
@@ -61,19 +68,29 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
         </div>
         <div>
           <label>Desde</label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
+          <DatePicker
+            selected={dateFrom}
+            onChange={date => setDateFrom(date)}
+            dateFormat="yyyy-MM-dd"
+            locale={es}
+            isClearable
+            placeholderText="Desde"
+            className="custom-datepicker"
+            calendarClassName="custom-calendar"
             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>
         <div>
           <label>Hasta</label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
+          <DatePicker
+            selected={dateTo}
+            onChange={date => setDateTo(date)}
+            dateFormat="yyyy-MM-dd"
+            locale={es}
+            isClearable
+            placeholderText="Hasta"
+            className="custom-datepicker"
+            calendarClassName="custom-calendar"
             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>

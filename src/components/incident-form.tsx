@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { es } from 'date-fns/locale'
 import { createIncident } from '@/lib/incidents'
 import { CreateIncidentInput } from '@/lib/types'
+import { createClient } from '@/lib/supabase-client'
 
 interface IncidentFormProps {
   onSuccess: () => void
@@ -23,6 +24,20 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
     responsible: '',
     observations: '',
   })
+  const [userName, setUserName] = useState<string>('')
+
+  // Obtener el nombre del usuario autenticado al montar el componente
+  useEffect(() => {
+    const fetchUserName = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user && user.user_metadata && user.user_metadata.name) {
+        setUserName(user.user_metadata.name)
+        setFormData((prev) => ({ ...prev, responsible: user.user_metadata.name }))
+      }
+    }
+    fetchUserName()
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -47,7 +62,7 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
         problem_description: '',
         actions_taken: '',
         affected_tool: '',
-        responsible: '',
+        responsible: userName, // restaurar el nombre del técnico
         observations: '',
       })
       onSuccess()
@@ -76,15 +91,30 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
           />
         </div>
         <div>
-          <label>Tecnico Asignado</label>
+          <label style={{ display: 'block', marginBottom: '4px', color: 'var(--text-secondary)' }}>Técnico Asignado</label>
           <input
             type="text"
             name="responsible"
-            placeholder="Nombre del responsable"
             value={formData.responsible}
-            onChange={handleChange}
+            disabled
             required
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+            style={{
+              width: '100%',
+              padding: '8px',
+              background: 'var(--bg-card)',
+              color: 'var(--text-main)',
+              border: '1px solid var(--border-default)',
+              borderRadius: '4px',
+              fontWeight: 500,
+              fontSize: '15px',
+              marginBottom: '2px',
+              minHeight: '38px',
+              letterSpacing: '0.5px',
+              userSelect: 'text',
+              opacity: 1,
+              cursor: 'not-allowed',
+            }}
+            placeholder="Nombre del responsable"
           />
         </div>
       </div>

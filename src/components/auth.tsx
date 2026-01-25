@@ -10,6 +10,7 @@ export default function AuthComponent() {
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [error, setError] = useState<string | null>(null)
+  const [name, setName] = useState('')
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -20,10 +21,18 @@ export default function AuthComponent() {
       const supabase = createClient()
 
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password })
+        if (!name.trim()) throw new Error('El nombre es obligatorio')
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name }
+          }
+        })
         if (error) throw error
         setEmail('')
         setPassword('')
+        setName('')
         setMode('signin')
         alert('Verifica tu correo para confirmar la cuenta')
       } else {
@@ -48,6 +57,18 @@ export default function AuthComponent() {
         <Logo />
       </div>
       <form onSubmit={handleAuth}>
+        {mode === 'signup' && (
+          <div style={{ marginBottom: '12px' }}>
+            <input
+              type="text"
+              placeholder="Nombre del técnico"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+            />
+          </div>
+        )}
         <div style={{ marginBottom: '12px' }}>
           <input
             type="email"
