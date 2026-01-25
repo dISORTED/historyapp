@@ -70,7 +70,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           <label>Desde</label>
           <DatePicker
             selected={dateFrom}
-            onChange={date => setDateFrom(date)}
+            onChange={(date: Date | null) => setDateFrom(date)}
             dateFormat="yyyy-MM-dd"
             locale={es}
             isClearable
@@ -84,7 +84,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           <label>Hasta</label>
           <DatePicker
             selected={dateTo}
-            onChange={date => setDateTo(date)}
+            onChange={(date: Date | null) => setDateTo(date)}
             dateFormat="yyyy-MM-dd"
             locale={es}
             isClearable
