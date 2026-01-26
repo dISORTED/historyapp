@@ -41,24 +41,18 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, dateFrom, dateTo, refreshTrigger])
 
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString('es-CL')
+
+  const formatTime = (date: string) =>
+    new Date(date).toLocaleTimeString('es-CL', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
   return (
     <div>
       <h2>Historial de Incidencias</h2>
-
-      <style jsx global>{`
-        /* Asegura que el DatePicker ocupe todo el ancho del grid */
-        .react-datepicker-wrapper,
-        .react-datepicker__input-container {
-          width: 100%;
-        }
-
-        /* Estilo del input del DatePicker (antes lo estabas poniendo con prop style) */
-        .custom-datepicker {
-          width: 100%;
-          padding: 8px;
-          box-sizing: border-box;
-        }
-      `}</style>
 
       <div
         style={{
@@ -73,13 +67,13 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
         }}
       >
         <div>
-          <label>Buscar (palabra clave)</label>
+          <label>Buscar</label>
           <input
             type="text"
             placeholder="Título, sistema, responsable..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '8px' }}
           />
         </div>
 
@@ -87,13 +81,12 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           <label>Desde</label>
           <DatePicker
             selected={dateFrom}
-            onChange={(date: Date | null) => setDateFrom(date)}
+            onChange={(date) => setDateFrom(date)}
             dateFormat="yyyy-MM-dd"
             locale={es}
             isClearable
             placeholderText="Desde"
             className="custom-datepicker"
-            calendarClassName="custom-calendar"
           />
         </div>
 
@@ -101,80 +94,42 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           <label>Hasta</label>
           <DatePicker
             selected={dateTo}
-            onChange={(date: Date | null) => setDateTo(date)}
+            onChange={(date) => setDateTo(date)}
             dateFormat="yyyy-MM-dd"
             locale={es}
             isClearable
             placeholderText="Hasta"
             className="custom-datepicker"
-            calendarClassName="custom-calendar"
           />
         </div>
       </div>
 
       {loading ? (
         <p>Cargando...</p>
-      ) : incidents.length === 0 ? (
-        <p>No hay incidencias registradas</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
-          <table
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: '13px',
-            }}
-          >
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)' }}>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: 'bold' }}>Fecha</th>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: 'bold' }}>Título</th>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: 'bold' }}>Sistema</th>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: 'bold' }}>Responsable</th>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: 'bold' }}>Problema</th>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: 'bold' }}>Acciones</th>
+              <tr>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Título</th>
+                <th>Sistema</th>
+                <th>Responsable</th>
+                <th>Acciones</th>
               </tr>
             </thead>
 
             <tbody>
               {incidents.map((incident) => (
-                <tr
-                  key={incident.id}
-                  style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
-                >
-                  <td style={{ padding: '10px' }}>
-                    {new Date(incident.resolution_date).toLocaleDateString('es-ES')}
-                  </td>
-
-                  <td style={{ padding: '10px', fontWeight: '500' }}>{incident.title}</td>
-                  <td style={{ padding: '10px' }}>{incident.affected_tool}</td>
-                  <td style={{ padding: '10px' }}>{incident.responsible}</td>
-
-                  <td
-                    style={{
-                      padding: '10px',
-                      maxWidth: '300px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                    title={incident.problem_description}
-                  >
-                    {incident.problem_description}
-                  </td>
-
-                  <td style={{ padding: '10px' }}>
-                    <button
-                      onClick={() => setSelectedIncident(incident)}
-                      style={{
-                        color: 'var(--accent-primary)',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        fontSize: '13px',
-                      }}
-                    >
+                <tr key={incident.id}>
+                  <td>{formatDate(incident.resolution_date)}</td>
+                  <td>{formatTime(incident.resolution_date)}</td>
+                  <td>{incident.title}</td>
+                  <td>{incident.affected_tool}</td>
+                  <td>{incident.responsible}</td>
+                  <td>
+                    <button onClick={() => setSelectedIncident(incident)}>
                       Ver
                     </button>
                   </td>
