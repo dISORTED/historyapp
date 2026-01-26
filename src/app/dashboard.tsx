@@ -12,10 +12,11 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
-  // Gate para forzar nombre del técnico
+  // Nombre técnico + UI
   const [techName, setTechName] = useState('')
   const [savingName, setSavingName] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
+  const [showNameEditor, setShowNameEditor] = useState(false)
 
   const loadSession = async () => {
     const supabase = createClient()
@@ -71,6 +72,7 @@ export default function Dashboard() {
       if (error) throw error
 
       await loadSession()
+      setShowNameEditor(false)
     } catch (err) {
       setNameError(err instanceof Error ? err.message : 'No se pudo guardar el nombre.')
     } finally {
@@ -78,23 +80,25 @@ export default function Dashboard() {
     }
   }
 
-  if (loading)
+  if (loading) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
         <p>Cargando...</p>
       </div>
     )
+  }
 
-  if (!user)
+  if (!user) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <AuthComponent />
       </div>
     )
+  }
 
   const technicianName = user?.user_metadata?.name ? String(user.user_metadata.name).trim() : ''
 
-  // Si no hay nombre en metadata, bloqueamos la app hasta configurarlo
+  // Gate: si NO hay nombre, lo exigimos
   if (!technicianName) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -113,7 +117,7 @@ export default function Dashboard() {
             <div>
               <h2 style={{ margin: 0 }}>Configurar nombre de técnico</h2>
               <p style={{ margin: '6px 0 0 0', fontSize: '13px', opacity: 0.85 }}>
-                Para registrar tickets, primero debes definir tu nombre. Esto se asignará automáticamente como “Técnico asignado”.
+                Para registrar tickets, primero debes definir tu nombre. Se asignará automáticamente como “Técnico asignado”.
               </p>
             </div>
           </div>
@@ -194,9 +198,87 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div style={{ textAlign: 'right', fontSize: '13px' }}>
-              <p style={{ margin: '0 0 4px 0' }}>Técnico: <strong>{technicianName}</strong></p>
-              <p style={{ margin: '0 0 8px 0' }}>Sesión: {user.email}</p>
+            <div style={{ textAlign: 'right', fontSize: '13px', minWidth: '280px' }}>
+              <p style={{ margin: '0 0 4px 0' }}>
+                Técnico: <strong>{technicianName}</strong>{' '}
+                <button
+                  onClick={() => {
+                    setTechName(technicianName)
+                    setShowNameEditor((v) => !v)
+                    setNameError(null)
+                  }}
+                  style={{
+                    marginLeft: '8px',
+                    background: 'transparent',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                  }}
+                >
+                  Cambiar nombre
+                </button>
+              </p>
+
+              {showNameEditor && (
+                <div style={{ marginTop: '8px' }}>
+                  <input
+                    type="text"
+                    value={techName}
+                    onChange={(e) => setTechName(e.target.value)}
+                    placeholder="Nuevo nombre"
+                    style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '8px' }}
+                  />
+
+                  {nameError && (
+                    <div style={{ color: 'var(--color-error)', marginBottom: '8px' }}>
+                      {nameError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={saveTechnicianName}
+                      disabled={savingName}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        background: 'var(--accent-primary)',
+                        color: 'var(--bg-main)',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: savingName ? 'not-allowed' : 'pointer',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                      }}
+                    >
+                      {savingName ? 'Guardando...' : 'Guardar'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowNameEditor(false)
+                        setNameError(null)
+                        setTechName(technicianName)
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        background: 'transparent',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <p style={{ margin: '8px 0 8px 0' }}>Sesión: {user.email}</p>
 
               <button
                 onClick={async () => {

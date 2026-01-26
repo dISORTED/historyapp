@@ -40,7 +40,6 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
     observations: '',
   })
 
-  // Autocompletar técnico desde metadata
   useEffect(() => {
     const fetchUserName = async () => {
       const supabase = createClient()
@@ -88,13 +87,8 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
     setLoading(true)
 
     try {
-      // Validaciones mínimas
-      if (!formData.attention_datetime) {
-        throw new Error('Falta la hora de atención.')
-      }
-      if (!formData.attended_user.trim()) {
-        throw new Error('Falta el usuario atendido.')
-      }
+      if (!formData.attention_datetime) throw new Error('Falta la hora de atención.')
+      if (!formData.attended_user.trim()) throw new Error('Falta el usuario atendido.')
 
       await createIncident(formData)
 
@@ -126,22 +120,101 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
         marginBottom: '30px',
         background: 'var(--bg-card)',
         padding: '20px',
-        borderRadius: '4px',
+        borderRadius: '10px',
         border: '1px solid var(--border-color)',
       }}
     >
-      <h2>Nuevo Registro de Incidencia</h2>
+      <style jsx global>{`
+        /* === Base look para inputs (consistente con el resto de la UI) === */
+        .ti-input,
+        .ti-textarea,
+        .ti-datetime {
+          width: 100%;
+          padding: 10px 12px;
+          box-sizing: border-box;
+          background: var(--bg-card);
+          color: var(--text-main, var(--text-primary));
+          border: 1px solid var(--border-default, var(--border-color));
+          border-radius: 8px;
+          outline: none;
+          font-size: 13px;
+          transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+          min-height: 40px;
+        }
 
+        .ti-textarea {
+          min-height: auto;
+          resize: vertical;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+          font-size: 12.5px;
+          line-height: 1.4;
+        }
+
+        .ti-input:focus,
+        .ti-textarea:focus,
+        .ti-datetime:focus,
+        .custom-datepicker:focus {
+          border-color: var(--accent-primary);
+          box-shadow: 0 0 0 3px rgba(46, 229, 157, 0.18);
+        }
+
+        .ti-input::placeholder,
+        .ti-textarea::placeholder {
+          color: rgba(255, 255, 255, 0.35);
+        }
+
+        /* DatePicker ocupa todo el ancho */
+        .react-datepicker-wrapper,
+        .react-datepicker__input-container {
+          width: 100%;
+        }
+
+        /* Estilo del input del DatePicker */
+        .custom-datepicker {
+          width: 100%;
+          padding: 10px 12px;
+          box-sizing: border-box;
+          background: var(--bg-card);
+          color: var(--text-main, var(--text-primary));
+          border: 1px solid var(--border-default, var(--border-color));
+          border-radius: 8px;
+          outline: none;
+          font-size: 13px;
+          min-height: 40px;
+        }
+
+        /* datetime-local: algunos navegadores ponen fondo raro al ícono */
+        .ti-datetime::-webkit-calendar-picker-indicator {
+          opacity: 0.85;
+          cursor: pointer;
+          filter: invert(1);
+        }
+
+        /* Quita estilos “claros” por autofill */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus {
+          -webkit-text-fill-color: var(--text-main, var(--text-primary));
+          -webkit-box-shadow: 0 0 0px 1000px var(--bg-card) inset;
+          transition: background-color 9999s ease-in-out 0s;
+        }
+      `}</style>
+
+      <h2 style={{ marginBottom: '14px' }}>Nuevo Registro de Incidencia</h2>
+
+      {/* BLOQUE SUPERIOR: FECHA + HORA + USUARIO + TÉCNICO */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '12px',
-          marginBottom: '12px',
+          marginBottom: '14px',
         }}
       >
         <div>
-          <label>Fecha de cierre (opcional)</label>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+            Fecha de cierre (opcional)
+          </label>
           <DatePicker
             selected={new Date(formData.resolution_date)}
             onChange={handleResolutionDateChange}
@@ -153,53 +226,35 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
         </div>
 
         <div>
-          <label style={{ display: 'block', marginBottom: '4px' }}>
-            Técnico Asignado
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+            Técnico asignado
           </label>
           <input
             type="text"
-            name="responsible"
             value={formData.responsible}
             disabled
-            required
-            style={{
-              width: '100%',
-              padding: '8px',
-              background: 'var(--bg-card)',
-              color: 'var(--text-main)',
-              border: '1px solid var(--border-default)',
-              borderRadius: '4px',
-              fontWeight: 500,
-              fontSize: '15px',
-              minHeight: '38px',
-              opacity: 1,
-              cursor: 'not-allowed',
-            }}
+            className="ti-input"
+            style={{ cursor: 'not-allowed', opacity: 1, fontWeight: 600 }}
           />
         </div>
-      </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '12px',
-          marginBottom: '12px',
-        }}
-      >
         <div>
-          <label>Hora de atención</label>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+            Hora de atención
+          </label>
           <input
             type="datetime-local"
             value={toDatetimeLocalValue(new Date(formData.attention_datetime))}
             onChange={handleAttentionDatetimeChange}
             required
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+            className="ti-datetime"
           />
         </div>
 
         <div>
-          <label>Usuario atendido</label>
+          <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+            Usuario atendido
+          </label>
           <input
             type="text"
             name="attended_user"
@@ -207,13 +262,15 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
             value={formData.attended_user}
             onChange={handleChange}
             required
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+            className="ti-input"
           />
         </div>
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label>Título breve</label>
+        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          Título breve
+        </label>
         <input
           type="text"
           name="title"
@@ -221,12 +278,14 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
           value={formData.title}
           onChange={handleChange}
           required
-          style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+          className="ti-input"
         />
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label>Sistema afectado</label>
+        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          Sistema afectado
+        </label>
         <input
           type="text"
           name="affected_tool"
@@ -234,12 +293,14 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
           value={formData.affected_tool}
           onChange={handleChange}
           required
-          style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+          className="ti-input"
         />
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label>Descripción del problema</label>
+        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          Descripción del problema
+        </label>
         <textarea
           name="problem_description"
           placeholder="¿Cuál fue el problema?"
@@ -247,18 +308,14 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
           onChange={handleChange}
           required
           rows={3}
-          style={{
-            width: '100%',
-            padding: '8px',
-            boxSizing: 'border-box',
-            fontFamily: 'monospace',
-            fontSize: '13px',
-          }}
+          className="ti-textarea"
         />
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label>Acciones realizadas</label>
+        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          Acciones realizadas
+        </label>
         <textarea
           name="actions_taken"
           placeholder="Pasos específicos realizados para resolver"
@@ -266,48 +323,42 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
           onChange={handleChange}
           required
           rows={3}
-          style={{
-            width: '100%',
-            padding: '8px',
-            boxSizing: 'border-box',
-            fontFamily: 'monospace',
-            fontSize: '13px',
-          }}
+          className="ti-textarea"
         />
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label>Observaciones finales</label>
+        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+          Observaciones finales
+        </label>
         <textarea
           name="observations"
           placeholder="Notas adicionales o recomendaciones"
           value={formData.observations}
           onChange={handleChange}
           rows={2}
-          style={{
-            width: '100%',
-            padding: '8px',
-            boxSizing: 'border-box',
-            fontFamily: 'monospace',
-            fontSize: '13px',
-          }}
+          className="ti-textarea"
         />
       </div>
 
       {error && (
-        <div style={{ color: 'red', marginBottom: '12px' }}>{error}</div>
+        <div style={{ color: 'var(--color-error)', marginBottom: '12px', fontSize: '13px' }}>
+          {error}
+        </div>
       )}
 
       <button
         type="submit"
         disabled={loading}
         style={{
-          padding: '10px 20px',
+          padding: '10px 18px',
           background: 'var(--accent-primary)',
           color: 'var(--bg-main)',
           border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
+          borderRadius: '10px',
+          cursor: loading ? 'not-allowed' : 'pointer',
+          fontWeight: 800,
+          fontSize: '13px',
         }}
       >
         {loading ? 'Guardando...' : 'Guardar'}
