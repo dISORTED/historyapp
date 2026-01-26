@@ -122,7 +122,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
             <tbody>
               {incidents.map((incident) => (
                 <tr key={incident.id} style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
-                  <td style={{ padding: '10px' }}>{new Date(incident.resolution_date).toLocaleDateString('es-ES')}</td>
+                  <td style={{ padding: '10px' }}>{new Date(incident.resolution_date + 'T12:00:00').toLocaleDateString('es-ES')}</td>
                   <td style={{ padding: '10px', fontWeight: '500' }}>{incident.title}</td>
                   <td style={{ padding: '10px' }}>{incident.affected_tool}</td>
                   <td style={{ padding: '10px' }}>{incident.responsible}</td>

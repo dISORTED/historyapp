@@ -12,11 +12,21 @@ interface IncidentFormProps {
   onSuccess: () => void
 }
 
+// Función helper para obtener fecha actual en formato YYYY-MM-DD (local, no UTC)
+const getTodayLocal = () => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export default function IncidentForm({ onSuccess }: IncidentFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
   const [formData, setFormData] = useState<CreateIncidentInput>({
-    resolution_date: new Date().toISOString().split('T')[0],
+    resolution_date: getTodayLocal(), // Fecha actual por defecto
     title: '',
     problem_description: '',
     actions_taken: '',
@@ -45,7 +55,19 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
   }
 
   const handleDateChange = (date: Date | null) => {
-    const dateString = date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    if (!date) {
+      const today = new Date()
+      const year = today.getFullYear()
+      const month = String(today.getMonth() + 1).padStart(2, '0')
+      const day = String(today.getDate()).padStart(2, '0')
+      setFormData((prev) => ({ ...prev, resolution_date: `${year}-${month}-${day}` }))
+      return
+    }
+    // Usar fecha local en lugar de UTC para evitar problemas de zona horaria
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const dateString = `${year}-${month}-${day}`
     setFormData((prev) => ({ ...prev, resolution_date: dateString }))
   }
 
@@ -57,7 +79,7 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
     try {
       await createIncident(formData)
       setFormData({
-        resolution_date: new Date().toISOString().split('T')[0],
+        resolution_date: getTodayLocal(),
         title: '',
         problem_description: '',
         actions_taken: '',
@@ -81,7 +103,7 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
         <div>
           <label>Fecha de resolución </label>
           <DatePicker
-            selected={new Date(formData.resolution_date)}
+            selected={formData.resolution_date ? new Date(formData.resolution_date + 'T12:00:00') : null}
             onChange={handleDateChange}
             dateFormat="yyyy-MM-dd"
             locale={es}

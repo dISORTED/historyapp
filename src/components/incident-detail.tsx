@@ -225,7 +225,7 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
           <>
             <div style={{ marginBottom: '15px', fontSize: '13px', lineHeight: '1.8' }}>
               <p>
-                <strong>Fecha:</strong> {new Date(incident.resolution_date).toLocaleDateString('es-ES')}
+                <strong>Fecha:</strong> {new Date(incident.resolution_date + 'T12:00:00').toLocaleDateString('es-ES')}
               </p>
               <p>
                 <strong>Título:</strong> {incident.title}
