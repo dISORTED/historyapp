@@ -38,11 +38,27 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
 
   useEffect(() => {
     loadIncidents()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, dateFrom, dateTo, refreshTrigger])
 
   return (
     <div>
       <h2>Historial de Incidencias</h2>
+
+      <style jsx global>{`
+        /* Asegura que el DatePicker ocupe todo el ancho del grid */
+        .react-datepicker-wrapper,
+        .react-datepicker__input-container {
+          width: 100%;
+        }
+
+        /* Estilo del input del DatePicker (antes lo estabas poniendo con prop style) */
+        .custom-datepicker {
+          width: 100%;
+          padding: 8px;
+          box-sizing: border-box;
+        }
+      `}</style>
 
       <div
         style={{
@@ -66,6 +82,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
             style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>
+
         <div>
           <label>Desde</label>
           <DatePicker
@@ -77,9 +94,9 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
             placeholderText="Desde"
             className="custom-datepicker"
             calendarClassName="custom-calendar"
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>
+
         <div>
           <label>Hasta</label>
           <DatePicker
@@ -91,7 +108,6 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
             placeholderText="Hasta"
             className="custom-datepicker"
             calendarClassName="custom-calendar"
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>
       </div>
@@ -119,13 +135,21 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
                 <th style={{ padding: '10px', textAlign: 'left', fontWeight: 'bold' }}>Acciones</th>
               </tr>
             </thead>
+
             <tbody>
               {incidents.map((incident) => (
-                <tr key={incident.id} style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--bg-card)' }}>
-                  <td style={{ padding: '10px' }}>{new Date(incident.resolution_date + 'T12:00:00').toLocaleDateString('es-ES')}</td>
+                <tr
+                  key={incident.id}
+                  style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--bg-card)' }}
+                >
+                  <td style={{ padding: '10px' }}>
+                    {new Date(incident.resolution_date).toLocaleDateString('es-ES')}
+                  </td>
+
                   <td style={{ padding: '10px', fontWeight: '500' }}>{incident.title}</td>
                   <td style={{ padding: '10px' }}>{incident.affected_tool}</td>
                   <td style={{ padding: '10px' }}>{incident.responsible}</td>
+
                   <td
                     style={{
                       padding: '10px',
@@ -138,6 +162,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
                   >
                     {incident.problem_description}
                   </td>
+
                   <td style={{ padding: '10px' }}>
                     <button
                       onClick={() => setSelectedIncident(incident)}
