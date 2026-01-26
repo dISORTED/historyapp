@@ -12,28 +12,71 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
+  // Gate para forzar nombre del técnico
+  const [techName, setTechName] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [nameError, setNameError] = useState<string | null>(null)
+
+  const loadSession = async () => {
+    const supabase = createClient()
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    const u = session?.user || null
+    setUser(u)
+
+    const existingName = u?.user_metadata?.name ? String(u.user_metadata.name) : ''
+    setTechName(existingName)
+  }
+
   useEffect(() => {
     const supabase = createClient()
 
-    const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      setUser(session?.user || null)
+    const init = async () => {
+      await loadSession()
       setLoading(false)
     }
 
-    getSession()
+    init()
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user || null)
-      //
+    } = supabase.auth.onAuthStateChange(async () => {
+      await loadSession()
     })
 
     return () => subscription?.unsubscribe()
   }, [])
+
+  const saveTechnicianName = async () => {
+    setNameError(null)
+
+    const clean = techName.trim()
+    if (!clean) {
+      setNameError('Debes ingresar tu nombre de técnico.')
+      return
+    }
+    if (clean.length < 3) {
+      setNameError('El nombre debe tener al menos 3 caracteres.')
+      return
+    }
+
+    setSavingName(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({
+        data: { name: clean },
+      })
+      if (error) throw error
+
+      await loadSession()
+    } catch (err) {
+      setNameError(err instanceof Error ? err.message : 'No se pudo guardar el nombre.')
+    } finally {
+      setSavingName(false)
+    }
+  }
 
   if (loading)
     return (
@@ -49,6 +92,86 @@ export default function Dashboard() {
       </div>
     )
 
+  const technicianName = user?.user_metadata?.name ? String(user.user_metadata.name).trim() : ''
+
+  // Si no hay nombre en metadata, bloqueamos la app hasta configurarlo
+  if (!technicianName) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div
+          style={{
+            width: '100%',
+            maxWidth: '520px',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '10px',
+            padding: '24px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+            <Logo />
+            <div>
+              <h2 style={{ margin: 0 }}>Configurar nombre de técnico</h2>
+              <p style={{ margin: '6px 0 0 0', fontSize: '13px', opacity: 0.85 }}>
+                Para registrar tickets, primero debes definir tu nombre. Esto se asignará automáticamente como “Técnico asignado”.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              Nombre del técnico
+            </label>
+            <input
+              type="text"
+              value={techName}
+              onChange={(e) => setTechName(e.target.value)}
+              placeholder="Ej: Sebastián Echeverría"
+              style={{ width: '100%', padding: '10px', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          {nameError && <div style={{ color: 'var(--color-error)', marginBottom: '12px', fontSize: '13px' }}>{nameError}</div>}
+
+          <button
+            onClick={saveTechnicianName}
+            disabled={savingName}
+            style={{
+              width: '100%',
+              padding: '10px',
+              background: 'var(--accent-primary)',
+              color: 'var(--bg-main)',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: savingName ? 'not-allowed' : 'pointer',
+              fontWeight: 700,
+            }}
+          >
+            {savingName ? 'Guardando...' : 'Guardar y continuar'}
+          </button>
+
+          <button
+            onClick={async () => {
+              const supabase = createClient()
+              await supabase.auth.signOut()
+            }}
+            style={{
+              width: '100%',
+              padding: '10px',
+              marginTop: '10px',
+              background: 'transparent',
+              border: '1px solid var(--border-color)',
+              borderRadius: '8px',
+              cursor: 'pointer',
+            }}
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-main)' }}>
       <header
@@ -58,7 +181,7 @@ export default function Dashboard() {
           padding: '20px',
           marginBottom: '30px',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          borderBottom: '1px solid var(--border-color)'
+          borderBottom: '1px solid var(--border-color)',
         }}
       >
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -70,8 +193,11 @@ export default function Dashboard() {
                 <p style={{ margin: 0, fontSize: '13px', opacity: 0.8 }}>Registro simple y rápido de resoluciones</p>
               </div>
             </div>
+
             <div style={{ textAlign: 'right', fontSize: '13px' }}>
+              <p style={{ margin: '0 0 4px 0' }}>Técnico: <strong>{technicianName}</strong></p>
               <p style={{ margin: '0 0 8px 0' }}>Sesión: {user.email}</p>
+
               <button
                 onClick={async () => {
                   const supabase = createClient()
@@ -86,16 +212,6 @@ export default function Dashboard() {
                   cursor: 'pointer',
                   fontSize: '13px',
                   fontWeight: 'bold',
-                  boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(239, 68, 68, 0.5)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(239, 68, 68, 0.3)';
-                  e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
                 Cerrar sesión
@@ -109,23 +225,6 @@ export default function Dashboard() {
         <IncidentForm onSuccess={() => setRefreshTrigger((prev) => prev + 1)} />
         <IncidentList refreshTrigger={refreshTrigger} />
       </main>
-
-      <footer
-        style={{
-          background: 'var(--bg-card)',
-          padding: '20px',
-          textAlign: 'center',
-          fontSize: '12px',
-          color: 'var(--text-secondary)',
-          marginTop: '40px',
-          borderTop: '1px solid var(--border-color)'
-        }}
-      >
-        <div style={{ marginBottom: '10px' }}>
-          <Logo />
-        </div>
-        <p>© 2025 Historial de Incidencias TI - MVP v0.1</p>
-      </footer>
     </div>
   )
 }

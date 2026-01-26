@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Incident, CreateIncidentInput } from '@/lib/types'
+import { Incident } from '@/lib/types'
 import { deleteIncident, updateIncident } from '@/lib/incidents'
+import { CreateIncidentInput } from '@/lib/types'
 
 interface IncidentDetailProps {
   incident: Incident
@@ -10,51 +11,25 @@ interface IncidentDetailProps {
   onUpdate: () => void
 }
 
-function toDatetimeLocalValue(date: Date) {
-  const offset = date.getTimezoneOffset()
-  const local = new Date(date.getTime() - offset * 60000)
-  return local.toISOString().slice(0, 16)
-}
-
-export default function IncidentDetail({
-  incident,
-  onClose,
-  onUpdate,
-}: IncidentDetailProps) {
+export default function IncidentDetail({ incident, onClose, onUpdate }: IncidentDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Importante: NO incluimos "responsible" en formData para que nunca se intente actualizar
   const [formData, setFormData] = useState<Partial<CreateIncidentInput>>({
     resolution_date: incident.resolution_date,
-
-    attention_datetime:
-      incident.attention_datetime || incident.created_at || new Date().toISOString(),
-    attended_user: incident.attended_user || '',
-
     title: incident.title,
     problem_description: incident.problem_description,
     actions_taken: incident.actions_taken,
     affected_tool: incident.affected_tool,
-    responsible: incident.responsible,
     observations: incident.observations,
   })
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleAttentionDatetimeChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const v = e.target.value // local datetime
-    if (!v) return
-    const iso = new Date(v).toISOString()
-    setFormData((prev) => ({ ...prev, attention_datetime: iso }))
   }
 
   const handleSave = async () => {
@@ -89,9 +64,6 @@ export default function IncidentDetail({
     }
   }
 
-  const baseDate =
-    incident.attention_datetime || incident.created_at || incident.resolution_date
-
   return (
     <div
       style={{
@@ -121,24 +93,11 @@ export default function IncidentDetail({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '20px',
-          }}
-        >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2>Detalles de Incidencia</h2>
           <button
             onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-            }}
+            style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: 'var(--text-secondary)' }}
           >
             ✕
           </button>
@@ -147,30 +106,7 @@ export default function IncidentDetail({
         {isEditing ? (
           <>
             <div style={{ marginBottom: '12px' }}>
-              <label>Hora de atención</label>
-              <input
-                type="datetime-local"
-                value={toDatetimeLocalValue(
-                  new Date(formData.attention_datetime || new Date().toISOString())
-                )}
-                onChange={handleAttentionDatetimeChange}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label>Usuario atendido</label>
-              <input
-                type="text"
-                name="attended_user"
-                value={formData.attended_user || ''}
-                onChange={handleChange}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label>Fecha de cierre (opcional)</label>
+              <label>Fecha de resolución</label>
               <input
                 type="date"
                 name="resolution_date"
@@ -181,22 +117,21 @@ export default function IncidentDetail({
             </div>
 
             <div style={{ marginBottom: '12px' }}>
+              <label>Responsable (bloqueado)</label>
+              <input
+                type="text"
+                value={incident.responsible}
+                disabled
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', opacity: 0.9, cursor: 'not-allowed' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
               <label>Título</label>
               <input
                 type="text"
                 name="title"
                 value={formData.title}
-                onChange={handleChange}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label>Responsable</label>
-              <input
-                type="text"
-                name="responsible"
-                value={formData.responsible}
                 onChange={handleChange}
                 style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
               />
@@ -220,13 +155,7 @@ export default function IncidentDetail({
                 value={formData.problem_description}
                 onChange={handleChange}
                 rows={4}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  boxSizing: 'border-box',
-                  fontFamily: 'monospace',
-                  fontSize: '13px',
-                }}
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: '13px' }}
               />
             </div>
 
@@ -237,13 +166,7 @@ export default function IncidentDetail({
                 value={formData.actions_taken}
                 onChange={handleChange}
                 rows={4}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  boxSizing: 'border-box',
-                  fontFamily: 'monospace',
-                  fontSize: '13px',
-                }}
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: '13px' }}
               />
             </div>
 
@@ -254,13 +177,7 @@ export default function IncidentDetail({
                 value={formData.observations}
                 onChange={handleChange}
                 rows={2}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  boxSizing: 'border-box',
-                  fontFamily: 'monospace',
-                  fontSize: '13px',
-                }}
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: '13px' }}
               />
             </div>
 
@@ -282,6 +199,7 @@ export default function IncidentDetail({
               >
                 {isSaving ? 'Guardando...' : 'Guardar'}
               </button>
+
               <button
                 onClick={() => setIsEditing(false)}
                 style={{
@@ -302,13 +220,7 @@ export default function IncidentDetail({
           <>
             <div style={{ marginBottom: '15px', fontSize: '13px', lineHeight: '1.8' }}>
               <p>
-                <strong>Fecha:</strong> {new Date(baseDate).toLocaleDateString('es-CL')}
-              </p>
-              <p>
-                <strong>Hora de atención:</strong> {new Date(baseDate).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
-              </p>
-              <p>
-                <strong>Usuario atendido:</strong> {incident.attended_user || '-'}
+                <strong>Fecha:</strong> {new Date(incident.resolution_date).toLocaleDateString('es-CL')}
               </p>
               <p>
                 <strong>Título:</strong> {incident.title}
@@ -345,17 +257,9 @@ export default function IncidentDetail({
                   </span>
                 </p>
               )}
-
-              <p style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                Creado: {new Date(incident.created_at).toLocaleString('es-CL')}
-              </p>
             </div>
 
-            {error && (
-              <div style={{ color: 'var(--color-error)', marginBottom: '12px', fontSize: '12px' }}>
-                {error}
-              </div>
-            )}
+            {error && <div style={{ color: 'var(--color-error)', marginBottom: '12px', fontSize: '12px' }}>{error}</div>}
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button
@@ -373,6 +277,7 @@ export default function IncidentDetail({
               >
                 Editar
               </button>
+
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
@@ -389,6 +294,7 @@ export default function IncidentDetail({
               >
                 {isDeleting ? 'Eliminando...' : 'Eliminar'}
               </button>
+
               <button
                 onClick={onClose}
                 style={{
