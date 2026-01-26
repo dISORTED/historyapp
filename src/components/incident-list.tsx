@@ -12,6 +12,17 @@ interface IncidentListProps {
   refreshTrigger: number
 }
 
+function formatDate(dateIso: string) {
+  return new Date(dateIso).toLocaleDateString('es-CL')
+}
+
+function formatTime(dateIso: string) {
+  return new Date(dateIso).toLocaleTimeString('es-CL', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export default function IncidentList({ refreshTrigger }: IncidentListProps) {
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [loading, setLoading] = useState(true)
@@ -41,15 +52,6 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, dateFrom, dateTo, refreshTrigger])
 
-  const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString('es-CL')
-
-  const formatTime = (date: string) =>
-    new Date(date).toLocaleTimeString('es-CL', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-
   return (
     <div>
       <h2>Historial de Incidencias</h2>
@@ -73,7 +75,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
             placeholder="Título, sistema, responsable..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ width: '100%', padding: '8px' }}
+            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>
 
@@ -81,7 +83,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           <label>Desde</label>
           <DatePicker
             selected={dateFrom}
-            onChange={(date) => setDateFrom(date)}
+            onChange={(date: Date | null) => setDateFrom(date)}
             dateFormat="yyyy-MM-dd"
             locale={es}
             isClearable
@@ -94,7 +96,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           <label>Hasta</label>
           <DatePicker
             selected={dateTo}
-            onChange={(date) => setDateTo(date)}
+            onChange={(date: Date | null) => setDateTo(date)}
             dateFormat="yyyy-MM-dd"
             locale={es}
             isClearable
@@ -106,35 +108,65 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
 
       {loading ? (
         <p>Cargando...</p>
+      ) : incidents.length === 0 ? (
+        <p>No hay incidencias registradas</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th>Fecha</th>
-                <th>Hora</th>
-                <th>Título</th>
-                <th>Sistema</th>
-                <th>Responsable</th>
-                <th>Acciones</th>
+                <th style={{ textAlign: 'left', padding: '10px' }}>Fecha</th>
+                <th style={{ textAlign: 'left', padding: '10px' }}>
+                  Hora atención
+                </th>
+                <th style={{ textAlign: 'left', padding: '10px' }}>
+                  Usuario atendido
+                </th>
+                <th style={{ textAlign: 'left', padding: '10px' }}>Título</th>
+                <th style={{ textAlign: 'left', padding: '10px' }}>Sistema</th>
+                <th style={{ textAlign: 'left', padding: '10px' }}>
+                  Responsable
+                </th>
+                <th style={{ textAlign: 'left', padding: '10px' }}>Acciones</th>
               </tr>
             </thead>
 
             <tbody>
-              {incidents.map((incident) => (
-                <tr key={incident.id}>
-                  <td>{formatDate(incident.resolution_date)}</td>
-                  <td>{formatTime(incident.resolution_date)}</td>
-                  <td>{incident.title}</td>
-                  <td>{incident.affected_tool}</td>
-                  <td>{incident.responsible}</td>
-                  <td>
-                    <button onClick={() => setSelectedIncident(incident)}>
-                      Ver
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {incidents.map((incident) => {
+                const baseDate =
+                  incident.attention_datetime ||
+                  incident.created_at ||
+                  incident.resolution_date
+
+                return (
+                  <tr key={incident.id}>
+                    <td style={{ padding: '10px' }}>{formatDate(baseDate)}</td>
+                    <td style={{ padding: '10px' }}>{formatTime(baseDate)}</td>
+                    <td style={{ padding: '10px' }}>
+                      {incident.attended_user || '-'}
+                    </td>
+                    <td style={{ padding: '10px', fontWeight: 500 }}>
+                      {incident.title}
+                    </td>
+                    <td style={{ padding: '10px' }}>{incident.affected_tool}</td>
+                    <td style={{ padding: '10px' }}>{incident.responsible}</td>
+                    <td style={{ padding: '10px' }}>
+                      <button
+                        onClick={() => setSelectedIncident(incident)}
+                        style={{
+                          color: 'var(--accent-primary)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        Ver
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

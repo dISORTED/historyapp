@@ -23,26 +23,34 @@ export async function createIncident(incident: CreateIncidentInput) {
   return data
 }
 
-export async function getIncidents(searchTerm = '', dateFrom: string | null = null, dateTo: string | null = null) {
+export async function getIncidents(
+  searchTerm = '',
+  dateFrom: string | null = null,
+  dateTo: string | null = null
+) {
   const supabase = createClient()
 
+  // Orden principal: attention_datetime (nuevo). Fallback: created_at si hay nulos.
   let query = supabase
     .from('incidents')
     .select('*')
-    .order('resolution_date', { ascending: false })
+    .order('attention_datetime', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
 
   if (searchTerm) {
     query = query.or(
-      `title.ilike.%${searchTerm}%,problem_description.ilike.%${searchTerm}%,actions_taken.ilike.%${searchTerm}%,affected_tool.ilike.%${searchTerm}%,responsible.ilike.%${searchTerm}%`
+      `title.ilike.%${searchTerm}%,problem_description.ilike.%${searchTerm}%,actions_taken.ilike.%${searchTerm}%,affected_tool.ilike.%${searchTerm}%,responsible.ilike.%${searchTerm}%,attended_user.ilike.%${searchTerm}%`
     )
   }
 
+  // Filtrado por rango usando attention_datetime
+  // dateFrom/dateTo llegan como 'YYYY-MM-DD'
   if (dateFrom) {
-    query = query.gte('resolution_date', dateFrom)
+    query = query.gte('attention_datetime', `${dateFrom}T00:00:00`)
   }
 
   if (dateTo) {
-    query = query.lte('resolution_date', dateTo)
+    query = query.lte('attention_datetime', `${dateTo}T23:59:59`)
   }
 
   const { data, error } = await query
@@ -51,7 +59,10 @@ export async function getIncidents(searchTerm = '', dateFrom: string | null = nu
   return data
 }
 
-export async function updateIncident(id: string, incident: Partial<CreateIncidentInput>) {
+export async function updateIncident(
+  id: string,
+  incident: Partial<CreateIncidentInput>
+) {
   const supabase = createClient()
 
   const { data, error } = await supabase

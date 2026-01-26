@@ -1,9 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Incident } from '@/lib/types'
+import { Incident, CreateIncidentInput } from '@/lib/types'
 import { deleteIncident, updateIncident } from '@/lib/incidents'
-import { CreateIncidentInput } from '@/lib/types'
 
 interface IncidentDetailProps {
   incident: Incident
@@ -11,13 +10,29 @@ interface IncidentDetailProps {
   onUpdate: () => void
 }
 
-export default function IncidentDetail({ incident, onClose, onUpdate }: IncidentDetailProps) {
+function toDatetimeLocalValue(date: Date) {
+  const offset = date.getTimezoneOffset()
+  const local = new Date(date.getTime() - offset * 60000)
+  return local.toISOString().slice(0, 16)
+}
+
+export default function IncidentDetail({
+  incident,
+  onClose,
+  onUpdate,
+}: IncidentDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
   const [formData, setFormData] = useState<Partial<CreateIncidentInput>>({
     resolution_date: incident.resolution_date,
+
+    attention_datetime:
+      incident.attention_datetime || incident.created_at || new Date().toISOString(),
+    attended_user: incident.attended_user || '',
+
     title: incident.title,
     problem_description: incident.problem_description,
     actions_taken: incident.actions_taken,
@@ -26,9 +41,20 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
     observations: incident.observations,
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleAttentionDatetimeChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const v = e.target.value // local datetime
+    if (!v) return
+    const iso = new Date(v).toISOString()
+    setFormData((prev) => ({ ...prev, attention_datetime: iso }))
   }
 
   const handleSave = async () => {
@@ -63,6 +89,9 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
     }
   }
 
+  const baseDate =
+    incident.attention_datetime || incident.created_at || incident.resolution_date
+
   return (
     <div
       style={{
@@ -92,7 +121,14 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '20px',
+          }}
+        >
           <h2>Detalles de Incidencia</h2>
           <button
             onClick={onClose}
@@ -111,7 +147,30 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
         {isEditing ? (
           <>
             <div style={{ marginBottom: '12px' }}>
-              <label>Fecha de resolución</label>
+              <label>Hora de atención</label>
+              <input
+                type="datetime-local"
+                value={toDatetimeLocalValue(
+                  new Date(formData.attention_datetime || new Date().toISOString())
+                )}
+                onChange={handleAttentionDatetimeChange}
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label>Usuario atendido</label>
+              <input
+                type="text"
+                name="attended_user"
+                value={formData.attended_user || ''}
+                onChange={handleChange}
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label>Fecha de cierre (opcional)</label>
               <input
                 type="date"
                 name="resolution_date"
@@ -161,7 +220,13 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
                 value={formData.problem_description}
                 onChange={handleChange}
                 rows={4}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: '13px' }}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  boxSizing: 'border-box',
+                  fontFamily: 'monospace',
+                  fontSize: '13px',
+                }}
               />
             </div>
 
@@ -172,7 +237,13 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
                 value={formData.actions_taken}
                 onChange={handleChange}
                 rows={4}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: '13px' }}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  boxSizing: 'border-box',
+                  fontFamily: 'monospace',
+                  fontSize: '13px',
+                }}
               />
             </div>
 
@@ -183,7 +254,13 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
                 value={formData.observations}
                 onChange={handleChange}
                 rows={2}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: '13px' }}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  boxSizing: 'border-box',
+                  fontFamily: 'monospace',
+                  fontSize: '13px',
+                }}
               />
             </div>
 
@@ -225,7 +302,13 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
           <>
             <div style={{ marginBottom: '15px', fontSize: '13px', lineHeight: '1.8' }}>
               <p>
-                <strong>Fecha:</strong> {new Date(incident.resolution_date + 'T12:00:00').toLocaleDateString('es-ES')}
+                <strong>Fecha:</strong> {new Date(baseDate).toLocaleDateString('es-CL')}
+              </p>
+              <p>
+                <strong>Hora de atención:</strong> {new Date(baseDate).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+              <p>
+                <strong>Usuario atendido:</strong> {incident.attended_user || '-'}
               </p>
               <p>
                 <strong>Título:</strong> {incident.title}
@@ -236,6 +319,7 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
               <p>
                 <strong>Sistema:</strong> {incident.affected_tool}
               </p>
+
               <p style={{ marginTop: '10px' }}>
                 <strong>Problema:</strong>
                 <br />
@@ -243,6 +327,7 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
                   {incident.problem_description}
                 </span>
               </p>
+
               <p style={{ marginTop: '10px' }}>
                 <strong>Acciones realizadas:</strong>
                 <br />
@@ -250,6 +335,7 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
                   {incident.actions_taken}
                 </span>
               </p>
+
               {incident.observations && (
                 <p style={{ marginTop: '10px' }}>
                   <strong>Observaciones:</strong>
@@ -259,12 +345,17 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
                   </span>
                 </p>
               )}
+
               <p style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                Creado: {new Date(incident.created_at).toLocaleString('es-ES')}
+                Creado: {new Date(incident.created_at).toLocaleString('es-CL')}
               </p>
             </div>
 
-            {error && <div style={{ color: 'var(--color-error)', marginBottom: '12px', fontSize: '12px' }}>{error}</div>}
+            {error && (
+              <div style={{ color: 'var(--color-error)', marginBottom: '12px', fontSize: '12px' }}>
+                {error}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button

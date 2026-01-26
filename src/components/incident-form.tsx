@@ -12,21 +12,26 @@ interface IncidentFormProps {
   onSuccess: () => void
 }
 
-// Función helper para obtener fecha actual en formato YYYY-MM-DD (local, no UTC)
-const getTodayLocal = () => {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, '0')
-  const day = String(today.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+// Convierte Date -> value para <input type="datetime-local"> en horario local
+function toDatetimeLocalValue(date: Date) {
+  const offset = date.getTimezoneOffset()
+  const local = new Date(date.getTime() - offset * 60000)
+  return local.toISOString().slice(0, 16) // YYYY-MM-DDTHH:mm
 }
 
 export default function IncidentForm({ onSuccess }: IncidentFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+  const [userName, setUserName] = useState<string>('')
+
   const [formData, setFormData] = useState<CreateIncidentInput>({
-    resolution_date: getTodayLocal(), // Fecha actual por defecto
+    // Se mantiene por compatibilidad (si lo ocupas como "fecha de cierre")
+    resolution_date: new Date().toISOString().split('T')[0],
+
+    // NUEVOS
+    attention_datetime: new Date().toISOString(),
+    attended_user: '',
+
     title: '',
     problem_description: '',
     actions_taken: '',
@@ -34,41 +39,47 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
     responsible: '',
     observations: '',
   })
-  const [userName, setUserName] = useState<string>('')
 
-  // Obtener el nombre del usuario autenticado al montar el componente
+  // Autocompletar técnico desde metadata
   useEffect(() => {
     const fetchUserName = async () => {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
       if (user && user.user_metadata && user.user_metadata.name) {
         setUserName(user.user_metadata.name)
-        setFormData((prev) => ({ ...prev, responsible: user.user_metadata.name }))
+        setFormData((prev) => ({
+          ...prev,
+          responsible: user.user_metadata.name,
+        }))
       }
     }
     fetchUserName()
   }, [])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleDateChange = (date: Date | null) => {
-    if (!date) {
-      const today = new Date()
-      const year = today.getFullYear()
-      const month = String(today.getMonth() + 1).padStart(2, '0')
-      const day = String(today.getDate()).padStart(2, '0')
-      setFormData((prev) => ({ ...prev, resolution_date: `${year}-${month}-${day}` }))
-      return
-    }
-    // Usar fecha local en lugar de UTC para evitar problemas de zona horaria
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const dateString = `${year}-${month}-${day}`
+  const handleResolutionDateChange = (date: Date | null) => {
+    const dateString = date
+      ? date.toISOString().split('T')[0]
+      : new Date().toISOString().split('T')[0]
     setFormData((prev) => ({ ...prev, resolution_date: dateString }))
+  }
+
+  const handleAttentionDatetimeChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const v = e.target.value // YYYY-MM-DDTHH:mm (local)
+    if (!v) return
+    const iso = new Date(v).toISOString()
+    setFormData((prev) => ({ ...prev, attention_datetime: iso }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,16 +88,29 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
     setLoading(true)
 
     try {
+      // Validaciones mínimas
+      if (!formData.attention_datetime) {
+        throw new Error('Falta la hora de atención.')
+      }
+      if (!formData.attended_user.trim()) {
+        throw new Error('Falta el usuario atendido.')
+      }
+
       await createIncident(formData)
+
       setFormData({
-        resolution_date: getTodayLocal(),
+        resolution_date: new Date().toISOString().split('T')[0],
+        attention_datetime: new Date().toISOString(),
+        attended_user: '',
+
         title: '',
         problem_description: '',
         actions_taken: '',
         affected_tool: '',
-        responsible: userName, // restaurar el nombre del técnico
+        responsible: userName,
         observations: '',
       })
+
       onSuccess()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear el registro')
@@ -96,24 +120,42 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ marginBottom: '30px', background: 'var(--bg-card)', padding: '20px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+    <form
+      onSubmit={handleSubmit}
+      style={{
+        marginBottom: '30px',
+        background: 'var(--bg-card)',
+        padding: '20px',
+        borderRadius: '4px',
+        border: '1px solid var(--border-color)',
+      }}
+    >
       <h2>Nuevo Registro de Incidencia</h2>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '12px',
+          marginBottom: '12px',
+        }}
+      >
         <div>
-          <label>Fecha de resolución </label>
+          <label>Fecha de cierre (opcional)</label>
           <DatePicker
-            selected={formData.resolution_date ? new Date(formData.resolution_date + 'T12:00:00') : null}
-            onChange={handleDateChange}
+            selected={new Date(formData.resolution_date)}
+            onChange={handleResolutionDateChange}
             dateFormat="yyyy-MM-dd"
             locale={es}
             className="custom-datepicker"
             calendarClassName="custom-calendar"
-            required
           />
         </div>
+
         <div>
-          <label style={{ display: 'block', marginBottom: '4px', color: 'var(--text-secondary)' }}>Técnico Asignado</label>
+          <label style={{ display: 'block', marginBottom: '4px' }}>
+            Técnico Asignado
+          </label>
           <input
             type="text"
             name="responsible"
@@ -129,14 +171,43 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
               borderRadius: '4px',
               fontWeight: 500,
               fontSize: '15px',
-              marginBottom: '2px',
               minHeight: '38px',
-              letterSpacing: '0.5px',
-              userSelect: 'text',
               opacity: 1,
               cursor: 'not-allowed',
             }}
-            placeholder="Nombre del responsable"
+          />
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '12px',
+          marginBottom: '12px',
+        }}
+      >
+        <div>
+          <label>Hora de atención</label>
+          <input
+            type="datetime-local"
+            value={toDatetimeLocalValue(new Date(formData.attention_datetime))}
+            onChange={handleAttentionDatetimeChange}
+            required
+            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+          />
+        </div>
+
+        <div>
+          <label>Usuario atendido</label>
+          <input
+            type="text"
+            name="attended_user"
+            placeholder="Nombre del usuario atendido"
+            value={formData.attended_user}
+            onChange={handleChange}
+            required
+            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           />
         </div>
       </div>
@@ -154,19 +225,17 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-        <div>
-          <label>Sistema afectado</label>
-          <input
-            type="text"
-            name="affected_tool"
-            placeholder="Herramienta o sistema"
-            value={formData.affected_tool}
-            onChange={handleChange}
-            required
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-          />
-        </div>
+      <div style={{ marginBottom: '12px' }}>
+        <label>Sistema afectado</label>
+        <input
+          type="text"
+          name="affected_tool"
+          placeholder="Herramienta o sistema"
+          value={formData.affected_tool}
+          onChange={handleChange}
+          required
+          style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+        />
       </div>
 
       <div style={{ marginBottom: '12px' }}>
@@ -178,7 +247,13 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
           onChange={handleChange}
           required
           rows={3}
-          style={{ width: '100%', padding: '8px', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: '13px' }}
+          style={{
+            width: '100%',
+            padding: '8px',
+            boxSizing: 'border-box',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+          }}
         />
       </div>
 
@@ -191,7 +266,13 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
           onChange={handleChange}
           required
           rows={3}
-          style={{ width: '100%', padding: '8px', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: '13px' }}
+          style={{
+            width: '100%',
+            padding: '8px',
+            boxSizing: 'border-box',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+          }}
         />
       </div>
 
@@ -203,26 +284,33 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
           value={formData.observations}
           onChange={handleChange}
           rows={2}
-          style={{ width: '100%', padding: '8px', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: '13px' }}
+          style={{
+            width: '100%',
+            padding: '8px',
+            boxSizing: 'border-box',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+          }}
         />
       </div>
 
-      {error && <div style={{ color: 'red', marginBottom: '12px' }}>{error}</div>}
+      {error && (
+        <div style={{ color: 'red', marginBottom: '12px' }}>{error}</div>
+      )}
 
       <button
         type="submit"
         disabled={loading}
         style={{
           padding: '10px 20px',
-          backgroundColor: 'var(--accent-primary)',
+          background: 'var(--accent-primary)',
           color: 'var(--bg-main)',
           border: 'none',
           borderRadius: '4px',
           cursor: 'pointer',
-          fontSize: '14px',
         }}
       >
-        {loading ? 'Guardando...' : 'Registrar Incidencia'}
+        {loading ? 'Guardando...' : 'Guardar'}
       </button>
     </form>
   )
