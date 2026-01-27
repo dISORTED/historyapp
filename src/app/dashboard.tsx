@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase-client'
 import IncidentForm from '@/components/incident-form'
 import IncidentList from '@/components/incident-list'
@@ -12,11 +12,17 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
-  // Nombre técnico + UI
+  // Gate nombre técnico
   const [techName, setTechName] = useState('')
   const [savingName, setSavingName] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   const [showNameEditor, setShowNameEditor] = useState(false)
+
+  // Evita que loadSession pise lo que el usuario está tecleando
+  const [nameDirty, setNameDirty] = useState(false)
+
+  // Evita resets por eventos repetidos con mismo usuario
+  const lastUserIdRef = useRef<string | null>(null)
 
   const loadSession = async () => {
     const supabase = createClient()
@@ -27,8 +33,32 @@ export default function Dashboard() {
     const u = session?.user || null
     setUser(u)
 
+    if (!u) {
+      lastUserIdRef.current = null
+      setTechName('')
+      setNameDirty(false)
+      return
+    }
+
+    const currentUserId = String(u.id)
     const existingName = u?.user_metadata?.name ? String(u.user_metadata.name) : ''
-    setTechName(existingName)
+
+    // Si cambió el usuario, reseteamos el dirty y cargamos el nombre del usuario nuevo
+    if (lastUserIdRef.current !== currentUserId) {
+      lastUserIdRef.current = currentUserId
+      setNameDirty(false)
+      setTechName(existingName)
+      return
+    }
+
+    // Si NO cambió usuario:
+    // - si ya hay nombre en metadata, lo sincronizamos (por si se actualizó desde otro lado)
+    // - si no hay nombre, NO pisamos lo que está escribiendo
+    if (existingName) {
+      setTechName(existingName)
+    } else if (!nameDirty) {
+      setTechName(existingName) // solo si aún no ha escrito
+    }
   }
 
   useEffect(() => {
@@ -38,7 +68,6 @@ export default function Dashboard() {
       await loadSession()
       setLoading(false)
     }
-
     init()
 
     const {
@@ -48,6 +77,7 @@ export default function Dashboard() {
     })
 
     return () => subscription?.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const saveTechnicianName = async () => {
@@ -70,6 +100,9 @@ export default function Dashboard() {
         data: { name: clean },
       })
       if (error) throw error
+
+      // Después de guardar, ya no es "dirty"
+      setNameDirty(false)
 
       await loadSession()
       setShowNameEditor(false)
@@ -98,21 +131,31 @@ export default function Dashboard() {
 
   const technicianName = user?.user_metadata?.name ? String(user.user_metadata.name).trim() : ''
 
-  // Gate: si NO hay nombre, lo exigimos
+  // Gate si no hay nombre
   if (!technicianName) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div
+        style={{
+          minHeight: '100vh',
+          background: 'var(--bg-main)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+        }}
+      >
         <div
           style={{
             width: '100%',
-            maxWidth: '520px',
+            maxWidth: '720px',
             background: 'var(--bg-card)',
             border: '1px solid var(--border-color)',
-            borderRadius: '10px',
-            padding: '24px',
+            borderRadius: '12px',
+            padding: '26px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.45)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
             <Logo />
             <div>
               <h2 style={{ margin: 0 }}>Configurar nombre de técnico</h2>
@@ -129,13 +172,21 @@ export default function Dashboard() {
             <input
               type="text"
               value={techName}
-              onChange={(e) => setTechName(e.target.value)}
+              onChange={(e) => {
+                setTechName(e.target.value)
+                setNameDirty(true)
+              }}
               placeholder="Ej: Sebastián Echeverría"
               style={{ width: '100%', padding: '10px', boxSizing: 'border-box' }}
+              autoFocus
             />
           </div>
 
-          {nameError && <div style={{ color: 'var(--color-error)', marginBottom: '12px', fontSize: '13px' }}>{nameError}</div>}
+          {nameError && (
+            <div style={{ color: 'var(--color-error)', marginBottom: '12px', fontSize: '13px' }}>
+              {nameError}
+            </div>
+          )}
 
           <button
             onClick={saveTechnicianName}
@@ -146,9 +197,9 @@ export default function Dashboard() {
               background: 'var(--accent-primary)',
               color: 'var(--bg-main)',
               border: 'none',
-              borderRadius: '8px',
+              borderRadius: '10px',
               cursor: savingName ? 'not-allowed' : 'pointer',
-              fontWeight: 700,
+              fontWeight: 800,
             }}
           >
             {savingName ? 'Guardando...' : 'Guardar y continuar'}
@@ -165,7 +216,7 @@ export default function Dashboard() {
               marginTop: '10px',
               background: 'transparent',
               border: '1px solid var(--border-color)',
-              borderRadius: '8px',
+              borderRadius: '10px',
               cursor: 'pointer',
             }}
           >
@@ -206,6 +257,7 @@ export default function Dashboard() {
                     setTechName(technicianName)
                     setShowNameEditor((v) => !v)
                     setNameError(null)
+                    setNameDirty(false)
                   }}
                   style={{
                     marginLeft: '8px',
@@ -226,7 +278,10 @@ export default function Dashboard() {
                   <input
                     type="text"
                     value={techName}
-                    onChange={(e) => setTechName(e.target.value)}
+                    onChange={(e) => {
+                      setTechName(e.target.value)
+                      setNameDirty(true)
+                    }}
                     placeholder="Nuevo nombre"
                     style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '8px' }}
                   />
@@ -249,7 +304,7 @@ export default function Dashboard() {
                         border: 'none',
                         borderRadius: '6px',
                         cursor: savingName ? 'not-allowed' : 'pointer',
-                        fontWeight: 700,
+                        fontWeight: 800,
                         fontSize: '12px',
                       }}
                     >
@@ -260,6 +315,7 @@ export default function Dashboard() {
                         setShowNameEditor(false)
                         setNameError(null)
                         setTechName(technicianName)
+                        setNameDirty(false)
                       }}
                       style={{
                         flex: 1,
@@ -310,3 +366,4 @@ export default function Dashboard() {
     </div>
   )
 }
+
