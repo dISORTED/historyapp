@@ -14,6 +14,28 @@ interface IncidentListProps {
 
 type SortDir = 'desc' | 'asc' // desc = más reciente primero
 
+// ✅ Convierte string|null a timestamp seguro
+// null/fecha inválida -> null (para mandarla al final)
+function toTime(value: string | null | undefined): number | null {
+  if (!value) return null
+  const t = new Date(value).getTime()
+  return Number.isFinite(t) ? t : null
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return '-'
+  return d.toLocaleDateString('es-CL')
+}
+
+function formatTime(value: string | null | undefined) {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return '-'
+  return d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+}
+
 export default function IncidentList({ refreshTrigger }: IncidentListProps) {
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,7 +55,6 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
         dateFrom ? dateFrom.toISOString().split('T')[0] : null,
         dateTo ? dateTo.toISOString().split('T')[0] : null
       )
-
       setIncidents(data || [])
     } catch (err) {
       console.error('Error al cargar incidencias:', err)
@@ -47,24 +68,22 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, dateFrom, dateTo, refreshTrigger])
 
-  // ✅ Orden aplicado en memoria (no muta el estado)
+  // ✅ Orden aplicado en memoria (no muta estado)
+  // null/invalid -> al final siempre
   const orderedIncidents = useMemo(() => {
     const copy = [...incidents]
     copy.sort((a, b) => {
-      const da = new Date(a.attention_datetime).getTime()
-      const db = new Date(b.attention_datetime).getTime()
-      return sortDir === 'desc' ? db - da : da - db
+      const ta = toTime(a.attention_datetime)
+      const tb = toTime(b.attention_datetime)
+
+      if (ta === null && tb === null) return 0
+      if (ta === null) return 1
+      if (tb === null) return -1
+
+      return sortDir === 'desc' ? tb - ta : ta - tb
     })
     return copy
   }, [incidents, sortDir])
-
-  const formatDate = (date: string) => new Date(date).toLocaleDateString('es-CL')
-
-  const formatTime = (date: string) =>
-    new Date(date).toLocaleTimeString('es-CL', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
 
   return (
     <div>
