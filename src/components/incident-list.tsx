@@ -12,10 +12,8 @@ interface IncidentListProps {
   refreshTrigger: number
 }
 
-type SortDir = 'desc' | 'asc' // desc = más reciente primero
+type SortDir = 'desc' | 'asc'
 
-// ✅ Convierte string|null a timestamp seguro
-// null/fecha inválida -> null (para mandarla al final)
 function toTime(value: string | null | undefined): number | null {
   if (!value) return null
   const t = new Date(value).getTime()
@@ -44,7 +42,6 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
   const [dateTo, setDateTo] = useState<Date | null>(null)
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null)
 
-  // ✅ Toggle de orden por hora de atención
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   const loadIncidents = async () => {
@@ -68,8 +65,6 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, dateFrom, dateTo, refreshTrigger])
 
-  // ✅ Orden aplicado en memoria (no muta estado)
-  // null/invalid -> al final siempre
   const orderedIncidents = useMemo(() => {
     const copy = [...incidents]
     copy.sort((a, b) => {
@@ -140,7 +135,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           <label>Desde</label>
           <DatePicker
             selected={dateFrom}
-            onChange={(date) => setDateFrom(date)}
+            onChange={(date: Date | null) => setDateFrom(date)}
             dateFormat="yyyy-MM-dd"
             locale={es}
             isClearable
@@ -153,7 +148,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           <label>Hasta</label>
           <DatePicker
             selected={dateTo}
-            onChange={(date) => setDateTo(date)}
+            onChange={(date: Date | null) => setDateTo(date)}
             dateFormat="yyyy-MM-dd"
             locale={es}
             isClearable
@@ -212,3 +207,4 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
     </div>
   )
 }
+
