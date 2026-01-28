@@ -12,52 +12,62 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
-  // Gate nombre técnico
+  // Debug/UI de error (evita "Cargando..." infinito)
+  const [appError, setAppError] = useState<string | null>(null)
+
+  // Nombre técnico + UI
   const [techName, setTechName] = useState('')
   const [savingName, setSavingName] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   const [showNameEditor, setShowNameEditor] = useState(false)
 
-  // Evita que loadSession pise lo que el usuario está tecleando
+  // Evita que loadSession pise lo que el usuario teclea
   const [nameDirty, setNameDirty] = useState(false)
-
-  // Evita resets por eventos repetidos con mismo usuario
   const lastUserIdRef = useRef<string | null>(null)
 
   const loadSession = async () => {
-    const supabase = createClient()
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    try {
+      setAppError(null)
+      const supabase = createClient()
 
-    const u = session?.user || null
-    setUser(u)
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession()
 
-    if (!u) {
-      lastUserIdRef.current = null
-      setTechName('')
-      setNameDirty(false)
-      return
-    }
+      if (error) throw error
 
-    const currentUserId = String(u.id)
-    const existingName = u?.user_metadata?.name ? String(u.user_metadata.name) : ''
+      const u = session?.user || null
+      setUser(u)
 
-    // Si cambió el usuario, reseteamos el dirty y cargamos el nombre del usuario nuevo
-    if (lastUserIdRef.current !== currentUserId) {
-      lastUserIdRef.current = currentUserId
-      setNameDirty(false)
-      setTechName(existingName)
-      return
-    }
+      if (!u) {
+        lastUserIdRef.current = null
+        setTechName('')
+        setNameDirty(false)
+        return
+      }
 
-    // Si NO cambió usuario:
-    // - si ya hay nombre en metadata, lo sincronizamos (por si se actualizó desde otro lado)
-    // - si no hay nombre, NO pisamos lo que está escribiendo
-    if (existingName) {
-      setTechName(existingName)
-    } else if (!nameDirty) {
-      setTechName(existingName) // solo si aún no ha escrito
+      const currentUserId = String(u.id)
+      const existingName = u?.user_metadata?.name ? String(u.user_metadata.name) : ''
+
+      if (lastUserIdRef.current !== currentUserId) {
+        lastUserIdRef.current = currentUserId
+        setNameDirty(false)
+        setTechName(existingName)
+        return
+      }
+
+      if (existingName) {
+        setTechName(existingName)
+      } else if (!nameDirty) {
+        setTechName(existingName)
+      }
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : 'Error inesperado cargando sesión.'
+      setAppError(msg)
+      // Importante: no dejar al usuario colgado
+      setUser(null)
     }
   }
 
@@ -65,18 +75,22 @@ export default function Dashboard() {
     const supabase = createClient()
 
     const init = async () => {
-      await loadSession()
-      setLoading(false)
+      try {
+        await loadSession()
+      } finally {
+        // ✅ pase lo que pase, no queda pegado
+        setLoading(false)
+      }
     }
+
     init()
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async () => {
+    const { data } = supabase.auth.onAuthStateChange(async () => {
+      // cambios de sesión: no bloquea UI
       await loadSession()
     })
 
-    return () => subscription?.unsubscribe()
+    return () => data.subscription?.unsubscribe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -101,9 +115,7 @@ export default function Dashboard() {
       })
       if (error) throw error
 
-      // Después de guardar, ya no es "dirty"
       setNameDirty(false)
-
       await loadSession()
       setShowNameEditor(false)
     } catch (err) {
@@ -113,6 +125,7 @@ export default function Dashboard() {
     }
   }
 
+  // Pantalla de carga (ya no infinita por errores)
   if (loading) {
     return (
       <div style={{ padding: '20px', textAlign: 'center' }}>
@@ -121,6 +134,43 @@ export default function Dashboard() {
     )
   }
 
+  // Si hubo error real, lo mostramos (para diagnosticar)
+  if (appError) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div
+          style={{
+            width: '100%',
+            maxWidth: '720px',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '12px',
+            padding: '22px',
+          }}
+        >
+          <h2 style={{ marginTop: 0 }}>Error cargando la sesión</h2>
+          <p style={{ opacity: 0.9, fontSize: '13px', lineHeight: 1.5 }}>
+            {appError}
+          </p>
+          <button
+            onClick={() => location.reload()}
+            style={{
+              padding: '10px 14px',
+              borderRadius: '10px',
+              border: '1px solid var(--border-color)',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontWeight: 800,
+            }}
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Si no hay user -> login
   if (!user) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -134,16 +184,7 @@ export default function Dashboard() {
   // Gate si no hay nombre
   if (!technicianName) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          background: 'var(--bg-main)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
-        }}
-      >
+      <div style={{ minHeight: '100vh', background: 'var(--bg-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
         <div
           style={{
             width: '100%',
@@ -160,7 +201,7 @@ export default function Dashboard() {
             <div>
               <h2 style={{ margin: 0 }}>Configurar nombre de técnico</h2>
               <p style={{ margin: '6px 0 0 0', fontSize: '13px', opacity: 0.85 }}>
-                Para registrar tickets, primero debes definir tu nombre. Se asignará automáticamente como “Técnico asignado”.
+                Para registrar tickets, primero debes definir tu nombre.
               </p>
             </div>
           </div>
@@ -286,11 +327,7 @@ export default function Dashboard() {
                     style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '8px' }}
                   />
 
-                  {nameError && (
-                    <div style={{ color: 'var(--color-error)', marginBottom: '8px' }}>
-                      {nameError}
-                    </div>
-                  )}
+                  {nameError && <div style={{ color: 'var(--color-error)', marginBottom: '8px' }}>{nameError}</div>}
 
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
@@ -366,4 +403,3 @@ export default function Dashboard() {
     </div>
   )
 }
-

@@ -1,3 +1,4 @@
+// SOLO CAMBIO PEQUEÑO: agrega error UI y en catch setError(...)
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
@@ -37,15 +38,17 @@ function formatTime(value: string | null | undefined) {
 export default function IncidentList({ refreshTrigger }: IncidentListProps) {
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [loading, setLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
+
   const [searchTerm, setSearchTerm] = useState('')
   const [dateFrom, setDateFrom] = useState<Date | null>(null)
   const [dateTo, setDateTo] = useState<Date | null>(null)
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null)
-
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
   const loadIncidents = async () => {
     setLoading(true)
+    setListError(null)
     try {
       const data = await getIncidents(
         searchTerm,
@@ -54,7 +57,9 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
       )
       setIncidents(data || [])
     } catch (err) {
-      console.error('Error al cargar incidencias:', err)
+      const msg = err instanceof Error ? err.message : 'Error al cargar incidencias'
+      setListError(msg)
+      setIncidents([])
     } finally {
       setLoading(false)
     }
@@ -100,9 +105,8 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
             alignItems: 'center',
             gap: '8px',
           }}
-          title="Cambiar orden por hora de atención"
         >
-          Orden: {sortDir === 'desc' ? 'Reciente → Antigua' : 'Antigua → Reciente'}
+          Orden: {sortDir === 'desc' ? 'Reciente → Antigua' : 'Antigua → Reciente'}{' '}
           <span style={{ opacity: 0.9 }}>{sortDir === 'desc' ? '↓' : '↑'}</span>
         </button>
       </div>
@@ -160,6 +164,10 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
 
       {loading ? (
         <p>Cargando...</p>
+      ) : listError ? (
+        <div style={{ padding: '12px', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
+          <p style={{ margin: 0, color: 'var(--color-error)' }}>{listError}</p>
+        </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
