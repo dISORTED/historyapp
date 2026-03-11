@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase-client'
 import IncidentForm from '@/components/incident-form'
 import IncidentList from '@/components/incident-list'
+import IncidentsChart from '@/components/incidents-chart'
+import IncidentsByTechnician from '@/components/incidents-by-technician'
 import AuthComponent from '@/components/auth'
 import Logo from '@/components/logo'
 
@@ -12,16 +14,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
-  // Manejo de error global (evita loading infinito)
   const [appError, setAppError] = useState<string | null>(null)
 
-  // Nombre técnico
   const [techName, setTechName] = useState('')
   const [savingName, setSavingName] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
   const [showNameEditor, setShowNameEditor] = useState(false)
 
-  // Flags de control
   const [nameDirty, setNameDirty] = useState(false)
   const lastUserIdRef = useRef<string | null>(null)
   const mountedRef = useRef(true)
@@ -74,7 +73,6 @@ export default function Dashboard() {
         setTechName(existingName)
       }
     } catch (e: unknown) {
-      // 🔇 Ignorar AbortError (no es bug real)
       const msg = e instanceof Error ? e.message : String(e)
       const name = (e as any)?.name
 
@@ -96,7 +94,6 @@ export default function Dashboard() {
       try {
         await loadSession()
       } finally {
-        // ✅ pase lo que pase, no queda pegado en "Cargando..."
         if (mountedRef.current) setLoading(false)
       }
     }
@@ -108,7 +105,6 @@ export default function Dashboard() {
     })
 
     return () => data.subscription?.unsubscribe()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const saveTechnicianName = async () => {
@@ -144,14 +140,28 @@ export default function Dashboard() {
     }
   }
 
-  /* =========================
-     ESTADOS DE CARGA / ERROR
-     ========================= */
-
   if (loading) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <p>Cargando...</p>
+      <div style={{ 
+        minHeight: '100vh', 
+        background: 'var(--bg-main)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '3px solid var(--border-color)',
+            borderTopColor: 'var(--accent-primary)',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <p style={{ color: 'var(--text-secondary)' }}>Cargando...</p>
+        </div>
       </div>
     )
   }
@@ -171,25 +181,34 @@ export default function Dashboard() {
         <div
           style={{
             width: '100%',
-            maxWidth: '720px',
+            maxWidth: '480px',
             background: 'var(--bg-card)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '12px',
-            padding: '22px',
+            border: '1px solid var(--color-error)',
+            borderRadius: 'var(--radius-xl)',
+            padding: '32px',
+            textAlign: 'center',
           }}
         >
-          <h2 style={{ marginTop: 0 }}>Error cargando la sesión</h2>
-          <p style={{ opacity: 0.9, fontSize: '13px' }}>{appError}</p>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            margin: '0 auto 20px',
+            background: 'var(--color-error-bg)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '28px'
+          }}>
+            ⚠
+          </div>
+          <h2 style={{ marginTop: 0, marginBottom: '12px', fontSize: '20px' }}>Error de conexión</h2>
+          <p style={{ opacity: 0.8, fontSize: '14px', marginBottom: '24px', color: 'var(--text-secondary)' }}>
+            {appError}
+          </p>
           <button
             onClick={() => location.reload()}
-            style={{
-              padding: '10px 14px',
-              borderRadius: '10px',
-              border: '1px solid var(--border-color)',
-              background: 'transparent',
-              cursor: 'pointer',
-              fontWeight: 800,
-            }}
+            className="btn btn-primary"
           >
             Reintentar
           </button>
@@ -206,9 +225,22 @@ export default function Dashboard() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          background: 'var(--bg-main)',
+          padding: '20px',
         }}
       >
-        <AuthComponent />
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'radial-gradient(ellipse at top, rgba(0, 166, 128, 0.1) 0%, transparent 60%)',
+          pointerEvents: 'none'
+        }} />
+        <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px' }}>
+          <AuthComponent />
+        </div>
       </div>
     )
   }
@@ -216,10 +248,6 @@ export default function Dashboard() {
   const technicianName = user?.user_metadata?.name
     ? String(user.user_metadata.name).trim()
     : ''
-
-  /* =========================
-     GATE: NOMBRE DE TÉCNICO
-     ========================= */
 
   if (!technicianName) {
     return (
@@ -236,32 +264,36 @@ export default function Dashboard() {
         <div
           style={{
             width: '100%',
-            maxWidth: '720px',
+            maxWidth: '480px',
             background: 'var(--bg-card)',
             border: '1px solid var(--border-color)',
-            borderRadius: '12px',
-            padding: '26px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.45)',
+            borderRadius: 'var(--radius-xl)',
+            padding: '32px',
+            boxShadow: 'var(--shadow-lg)',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '14px',
-              marginBottom: '18px',
-            }}
-          >
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <Logo />
-            <div>
-              <h2 style={{ margin: 0 }}>Configurar nombre de técnico</h2>
-              <p style={{ marginTop: '6px', fontSize: '13px', opacity: 0.85 }}>
-                Para registrar tickets, primero debes definir tu nombre.
-              </p>
-            </div>
           </div>
 
-          <label style={{ fontSize: '13px' }}>Nombre del técnico</label>
+          <h2 style={{ 
+            marginTop: 0, 
+            marginBottom: '8px', 
+            fontSize: '22px',
+            fontWeight: 700
+          }}>
+            ¡Bienvenido a STOTOMAS!
+          </h2>
+          <p style={{ 
+            marginTop: 0, 
+            fontSize: '14px', 
+            color: 'var(--text-secondary)',
+            marginBottom: '28px'
+          }}>
+            Para comenzar, ingresa tu nombre de técnico.
+          </p>
+
+          <label style={{ fontSize: '13px', marginBottom: '8px' }}>Nombre del técnico</label>
           <input
             type="text"
             value={techName}
@@ -270,31 +302,34 @@ export default function Dashboard() {
               setNameDirty(true)
             }}
             placeholder="Ej: Sebastián Echeverría"
-            style={{ width: '100%', padding: '10px', marginTop: '6px' }}
+            style={{ 
+              width: '100%', 
+              padding: '14px 16px',
+              fontSize: '15px'
+            }}
             autoFocus
           />
 
           {nameError && (
-            <div style={{ color: 'var(--color-error)', marginTop: '8px' }}>
-              {nameError}
+            <div style={{ 
+              color: 'var(--color-error)', 
+              marginTop: '12px',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span>⚠</span> {nameError}
             </div>
           )}
 
           <button
             onClick={saveTechnicianName}
             disabled={savingName}
-            style={{
-              width: '100%',
-              marginTop: '12px',
-              padding: '10px',
-              background: 'var(--accent-primary)',
-              borderRadius: '10px',
-              border: 'none',
-              fontWeight: 800,
-              cursor: savingName ? 'not-allowed' : 'pointer',
-            }}
+            className="btn btn-primary"
+            style={{ width: '100%', marginTop: '20px', padding: '14px' }}
           >
-            {savingName ? 'Guardando…' : 'Guardar y continuar'}
+            {savingName ? 'Guardando...' : 'Continuar'}
           </button>
 
           <button
@@ -302,14 +337,8 @@ export default function Dashboard() {
               const supabase = createClient()
               await supabase.auth.signOut()
             }}
-            style={{
-              width: '100%',
-              marginTop: '10px',
-              padding: '10px',
-              borderRadius: '10px',
-              border: '1px solid var(--border-color)',
-              background: 'transparent',
-            }}
+            className="btn btn-secondary"
+            style={{ width: '100%', marginTop: '12px' }}
           >
             Cerrar sesión
           </button>
@@ -318,58 +347,121 @@ export default function Dashboard() {
     )
   }
 
-  /* =========================
-     DASHBOARD PRINCIPAL
-     ========================= */
-
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-main)' }}>
       <header
         style={{
           background: 'var(--bg-card)',
-          padding: '20px',
+          padding: '16px 24px',
           borderBottom: '1px solid var(--border-color)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
         }}
       >
         <div
           style={{
-            maxWidth: '1200px',
+            maxWidth: '1400px',
             margin: '0 auto',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <Logo />
-            <div>
-              <h1 style={{ margin: 0 }}>Historial de Incidencias TI</h1>
-              <p style={{ margin: 0, fontSize: '13px', opacity: 0.8 }}>
-                Registro simple y rápido de resoluciones
+            <div style={{
+              paddingLeft: '20px',
+              borderLeft: '1px solid var(--border-color)'
+            }}>
+              <h1 style={{ 
+                margin: 0, 
+                fontSize: '18px', 
+                fontWeight: 600,
+                letterSpacing: '-0.01em'
+              }}>
+                Historial de Incidencias
+              </h1>
+              <p style={{ 
+                margin: '2px 0 0', 
+                fontSize: '13px', 
+                color: 'var(--text-secondary)'
+              }}>
+                Registro de soluciones técnicas
               </p>
             </div>
           </div>
 
-          <div style={{ textAlign: 'right', fontSize: '13px' }}>
-            <p style={{ margin: 0 }}>
-              Técnico: <strong>{technicianName}</strong>
-            </p>
-            <p style={{ margin: 0 }}>Sesión: {user.email}</p>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '16px',
+            fontSize: '14px'
+          }}>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ margin: 0, fontWeight: 500 }}>
+                {technicianName}
+              </p>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
+                {user.email}
+              </p>
+            </div>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'var(--accent-gradient)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 600,
+              fontSize: '16px',
+              boxShadow: 'var(--shadow-glow)'
+            }}>
+              {technicianName.charAt(0).toUpperCase()}
+            </div>
           </div>
         </div>
       </header>
 
       <main
         style={{
-          maxWidth: '1200px',
+          maxWidth: '1400px',
           margin: '0 auto',
-          padding: '20px',
+          padding: '32px 24px',
         }}
       >
-        <IncidentForm
-          onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
-        />
-        <IncidentList refreshTrigger={refreshTrigger} />
+        <div 
+          style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '55% 45%',
+            gap: '24px', 
+            marginBottom: '32px' 
+          }}
+          className="animate-fade-in"
+        >
+          <div>
+            <IncidentForm
+              onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
+            />
+          </div>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateRows: '1fr 1fr',
+            gap: '24px',
+            height: '100%'
+          }}>
+            <div>
+              <IncidentsChart refreshTrigger={refreshTrigger} />
+            </div>
+            <div>
+              <IncidentsByTechnician refreshTrigger={refreshTrigger} />
+            </div>
+          </div>
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '100ms' }}>
+          <IncidentList refreshTrigger={refreshTrigger} />
+        </div>
       </main>
     </div>
   )

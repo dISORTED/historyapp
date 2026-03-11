@@ -1,28 +1,44 @@
 :root {
   /* Fondo principal */
-  --bg-main: #0B0F14;
+  --bg-main: #0a0a0f;
   /* Fondo cards/tablas */
-  --bg-card: #121826;
-  /* Hover */
-  --bg-hover: #182033;
-  /* Texto principal */
-  --text-primary: #E5E7EB;
-  /* Texto secundario */
-  --text-secondary: #9CA3AF;
-  /* Texto deshabilitado */
-  --text-disabled: #6B7280;
-  /* Acento primario */
-  --accent-primary: #38BDF8;
-  /* Acento secundario/focus */
-  --accent-focus: #22D3EE;
-  /* Éxito */
-  --color-success: #22C55E;
-  /* Advertencia */
-  --color-warning: #F59E0B;
-  /* Error */
-  --color-error: #EF4444;
-  /* Bordes */
-  --border-color: #1F2937;
+  --bg-card: #13131a;
+  --bg-card-hover: #1a1a24;
+  --bg-elevated: #1c1c28;
+  --bg-input: #0d0d12;
+  
+  --text-primary: #f0f0f5;
+  --text-secondary: #8b8b9a;
+  --text-muted: #5c5c6d;
+  
+  --accent-primary: #00a680;
+  --accent-hover: #00c49a;
+  --accent-focus: #00e5b8;
+  --accent-gradient: linear-gradient(135deg, #00a680 0%, #00896a 100%);
+  
+  --color-success: #10b981;
+  --color-success-bg: rgba(16, 185, 129, 0.15);
+  --color-warning: #f59e0b;
+  --color-warning-bg: rgba(245, 158, 11, 0.15);
+  --color-error: #ef4444;
+  --color-error-bg: rgba(239, 68, 68, 0.15);
+  
+  --border-color: #2a2a3a;
+  --border-light: #1e1e2a;
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px rgba(0, 166, 128, 0.2);
+  
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 350ms ease;
 }
 
 * {
@@ -32,7 +48,7 @@
 
 html,
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
     'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -49,18 +65,29 @@ textarea,
 button {
   font-family: inherit;
   font-size: inherit;
+  transition: all var(--transition-fast);
+}
+
+button {
+  cursor: pointer;
 }
 
 button:hover {
   opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
 }
 
 label {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
 }
 
 input[type='text'],
@@ -69,10 +96,21 @@ input[type='password'],
 input[type='date'],
 textarea {
   border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-size: 13px;
-  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  padding: 12px 14px;
+  background: var(--bg-input);
   color: var(--text-primary);
+  width: 100%;
+  box-sizing: border-box;
+  transition: all var(--transition-fast);
+}
+
+input[type='text']::placeholder,
+input[type='email']::placeholder,
+input[type='password']::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
 }
 
 input[type='text']:focus,
@@ -81,23 +119,77 @@ input[type='password']:focus,
 input[type='date']:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--accent-focus);
-  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 166, 128, 0.2);
+  background: var(--bg-card);
+}
+
+input[type='text']:hover,
+input[type='email']:hover,
+input[type='password']:hover,
+input[type='date']:hover,
+textarea:hover {
+  border-color: var(--border-light);
+}
+
+input:disabled,
+textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+select {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  padding: 12px 14px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 166, 128, 0.2);
 }
 
 table {
   background: var(--bg-card);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   color: var(--text-primary);
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 table th {
+  background: var(--bg-elevated);
   border-bottom: 1px solid var(--border-color);
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 14px;
+}
+
+table tr:last-child td {
+  border-bottom: none;
 }
 
 table tr:hover {
-  background: var(--bg-hover);
+  background: var(--bg-card-hover);
 }
 
 details > summary {
@@ -108,74 +200,335 @@ details > summary::-webkit-details-marker {
   display: none;
 }
 
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
 @media (max-width: 768px) {
   [style*='grid'] {
     grid-template-columns: 1fr !important;
   }
 
   table {
-    font-size: 12px;
+    font-size: 13px;
   }
+  
+  table th,
+  table td {
+    padding: 10px 12px;
+  }
+}
+
+/* Botones */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary {
+  background: var(--accent-gradient);
+  color: white;
+  box-shadow: var(--shadow-sm), var(--shadow-glow);
+}
+
+.btn-primary:hover {
+  box-shadow: var(--shadow-md), 0 0 30px rgba(0, 166, 128, 0.25);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-primary);
+}
+
+.btn-danger {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border: 1px solid transparent;
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: var(--color-error);
+}
+
+.btn-success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.btn-success:hover {
+  background: rgba(16, 185, 129, 0.25);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-success {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.badge-warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.badge-error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.badge-info {
+  background: rgba(0, 166, 128, 0.15);
+  color: var(--accent-primary);
 }
 
 /* Estilos para react-datepicker dark theme */
 .custom-datepicker {
   width: 100%;
-  padding: 10px;
+  padding: 12px 14px;
   box-sizing: border-box;
-  background: var(--bg-card);
+  background: var(--bg-input);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   font-size: 14px;
   cursor: pointer;
 }
 
 .custom-datepicker:focus {
   outline: none;
-  border-color: var(--accent-focus);
-  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 166, 128, 0.2);
 }
 
 .custom-calendar {
   background: var(--bg-card) !important;
   color: var(--text-primary) !important;
   border: 1px solid var(--border-color) !important;
-  border-radius: 6px !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
 }
 
 .custom-calendar .react-datepicker__header {
-  background: var(--bg-hover) !important;
+  background: var(--bg-elevated) !important;
   border-bottom: 1px solid var(--border-color) !important;
+  padding: 12px !important;
 }
 
 .custom-calendar .react-datepicker__current-month,
 .custom-calendar .react-datepicker-time__header {
   color: var(--text-primary) !important;
+  font-weight: 600 !important;
 }
 
 .custom-calendar .react-datepicker__day-name,
 .custom-calendar .react-datepicker__day {
-  color: var(--text-primary) !important;
+  color: var(--text-secondary) !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  border-radius: 8px !important;
+  margin: 2px !important;
 }
 
 .custom-calendar .react-datepicker__day:hover {
-  background: var(--bg-hover) !important;
+  background: var(--bg-card-hover) !important;
+  color: var(--text-primary) !important;
 }
 
 .custom-calendar .react-datepicker__day--selected {
-  background: var(--accent-primary) !important;
-  color: var(--bg-main) !important;
+  background: var(--accent-gradient) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  box-shadow: var(--shadow-glow) !important;
 }
 
 .custom-calendar .react-datepicker__day--keyboard-selected {
-  background: var(--accent-focus) !important;
+  background: var(--accent-primary) !important;
 }
 
 .custom-calendar .react-datepicker__navigation {
   border: none !important;
+  top: 14px !important;
 }
 
 .custom-calendar .react-datepicker__navigation-icon::before {
+  border-color: var(--text-secondary) !important;
+}
+
+.custom-calendar .react-datepicker__navigation:hover *::before {
   border-color: var(--text-primary) !important;
+}
+
+.custom-calendar .react-datepicker__triangle {
+  display: none !important;
+}
+
+/* Time picker en DatePicker */
+.custom-calendar .react-datepicker__time-container {
+  border-left: 1px solid var(--border-color) !important;
+}
+
+.custom-calendar .react-datepicker__time {
+  background: var(--bg-card) !important;
+}
+
+.custom-calendar .react-datepicker__time-box {
+  background: var(--bg-card) !important;
+}
+
+.custom-calendar .react-datepicker__time-list {
+  background: var(--bg-card) !important;
+}
+
+.custom-calendar .react-datepicker__time-list-item {
+  color: var(--text-secondary) !important;
+  border-radius: 4px !important;
+  margin: 2px 4px !important;
+}
+
+.custom-calendar .react-datepicker__time-list-item:hover {
+  background: var(--bg-card-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.custom-calendar .react-datepicker__time-list-item--selected {
+  background: var(--accent-primary) !important;
+  color: white !important;
+  font-weight: 600 !important;
+}
+
+.custom-calendar .react-datepicker__time-list-item--selected:hover {
+  background: var(--accent-hover) !important;
+}
+
+.custom-calendar .react-datepicker__time-caption {
+  color: var(--text-secondary) !important;
+  font-size: 12px !important;
+  padding: 8px !important;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-normal) ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn var(--transition-normal) ease-out;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-elevated) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: pulse 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
 }

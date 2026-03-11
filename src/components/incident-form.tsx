@@ -12,26 +12,17 @@ interface IncidentFormProps {
   onSuccess: () => void
 }
 
-// Convierte Date -> value para <input type="datetime-local"> en horario local
-function toDatetimeLocalValue(date: Date) {
-  const offset = date.getTimezoneOffset()
-  const local = new Date(date.getTime() - offset * 60000)
-  return local.toISOString().slice(0, 16) // YYYY-MM-DDTHH:mm
-}
-
 export default function IncidentForm({ onSuccess }: IncidentFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const [userName, setUserName] = useState<string>('')
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const [formData, setFormData] = useState<CreateIncidentInput>({
-    // Se mantiene por compatibilidad (si lo ocupas como "fecha de cierre")
     resolution_date: new Date().toISOString().split('T')[0],
-
-    // NUEVOS
     attention_datetime: new Date().toISOString(),
     attended_user: '',
-
     title: '',
     problem_description: '',
     actions_taken: '',
@@ -72,18 +63,15 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
     setFormData((prev) => ({ ...prev, resolution_date: dateString }))
   }
 
-  const handleAttentionDatetimeChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const v = e.target.value // YYYY-MM-DDTHH:mm (local)
-    if (!v) return
-    const iso = new Date(v).toISOString()
-    setFormData((prev) => ({ ...prev, attention_datetime: iso }))
+  const handleAttentionDateTimeChange = (date: Date | null) => {
+    if (!date) return
+    setFormData((prev) => ({ ...prev, attention_datetime: date.toISOString() }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setSuccess(false)
     setLoading(true)
 
     try {
@@ -96,7 +84,6 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
         resolution_date: new Date().toISOString().split('T')[0],
         attention_datetime: new Date().toISOString(),
         attended_user: '',
-
         title: '',
         problem_description: '',
         actions_taken: '',
@@ -105,7 +92,11 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
         observations: '',
       })
 
+      setSuccess(true)
+      setIsExpanded(false)
       onSuccess()
+      
+      setTimeout(() => setSuccess(false), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear el registro')
     } finally {
@@ -114,255 +105,229 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      style={{
-        marginBottom: '30px',
-        background: 'var(--bg-card)',
-        padding: '20px',
-        borderRadius: '10px',
-        border: '1px solid var(--border-color)',
-      }}
-    >
-      <style jsx global>{`
-        /* === Base look para inputs (consistente con el resto de la UI) === */
-        .ti-input,
-        .ti-textarea,
-        .ti-datetime {
-          width: 100%;
-          padding: 10px 12px;
-          box-sizing: border-box;
-          background: var(--bg-card);
-          color: var(--text-main, var(--text-primary));
-          border: 1px solid var(--border-default, var(--border-color));
-          border-radius: 8px;
-          outline: none;
-          font-size: 13px;
-          transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
-          min-height: 40px;
-        }
-
-        .ti-textarea {
-          min-height: auto;
-          resize: vertical;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-          font-size: 12.5px;
-          line-height: 1.4;
-        }
-
-        .ti-input:focus,
-        .ti-textarea:focus,
-        .ti-datetime:focus,
-        .custom-datepicker:focus {
-          border-color: var(--accent-primary);
-          box-shadow: 0 0 0 3px rgba(46, 229, 157, 0.18);
-        }
-
-        .ti-input::placeholder,
-        .ti-textarea::placeholder {
-          color: rgba(255, 255, 255, 0.35);
-        }
-
-        /* DatePicker ocupa todo el ancho */
-        .react-datepicker-wrapper,
-        .react-datepicker__input-container {
-          width: 100%;
-        }
-
-        /* Estilo del input del DatePicker */
-        .custom-datepicker {
-          width: 100%;
-          padding: 10px 12px;
-          box-sizing: border-box;
-          background: var(--bg-card);
-          color: var(--text-main, var(--text-primary));
-          border: 1px solid var(--border-default, var(--border-color));
-          border-radius: 8px;
-          outline: none;
-          font-size: 13px;
-          min-height: 40px;
-        }
-
-        /* datetime-local: algunos navegadores ponen fondo raro al ícono */
-        .ti-datetime::-webkit-calendar-picker-indicator {
-          opacity: 0.85;
-          cursor: pointer;
-          filter: invert(1);
-        }
-
-        /* Quita estilos “claros” por autofill */
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover,
-        input:-webkit-autofill:focus {
-          -webkit-text-fill-color: var(--text-main, var(--text-primary));
-          -webkit-box-shadow: 0 0 0px 1000px var(--bg-card) inset;
-          transition: background-color 9999s ease-in-out 0s;
-        }
-      `}</style>
-
-      <h2 style={{ marginBottom: '14px' }}>Nuevo Registro de Incidencia</h2>
-
-      {/* BLOQUE SUPERIOR: FECHA + HORA + USUARIO + TÉCNICO */}
-      <div
+    <div className="card" style={{ marginBottom: '32px' }}>
+      <div 
+        onClick={() => setIsExpanded(!isExpanded)}
         style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '12px',
-          marginBottom: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          paddingBottom: isExpanded ? '20px' : '0',
+          borderBottom: isExpanded ? '1px solid var(--border-light)' : 'none',
+          marginBottom: isExpanded ? '20px' : '0',
+          transition: 'all var(--transition-normal)'
         }}
       >
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            Fecha de cierre (opcional)
-          </label>
-          <DatePicker
-            selected={new Date(formData.resolution_date)}
-            onChange={handleResolutionDateChange}
-            dateFormat="yyyy-MM-dd"
-            locale={es}
-            className="custom-datepicker"
-            calendarClassName="custom-calendar"
-          />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--accent-gradient)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '20px',
+            boxShadow: 'var(--shadow-glow)'
+          }}>
+            +
+          </div>
+          <div>
+            <h2 style={{ 
+              margin: 0, 
+              fontSize: '18px', 
+              fontWeight: 600 
+            }}>
+              Nuevo Registro
+            </h2>
+            <p style={{ 
+              margin: '2px 0 0', 
+              fontSize: '13px', 
+              color: 'var(--text-secondary)' 
+            }}>
+              Registrar una nueva incidencia
+            </p>
+          </div>
         </div>
-
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            Técnico asignado
-          </label>
-          <input
-            type="text"
-            value={formData.responsible}
-            disabled
-            className="ti-input"
-            style={{ cursor: 'not-allowed', opacity: 1, fontWeight: 600 }}
-          />
-        </div>
-
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            Hora de atención
-          </label>
-          <input
-            type="datetime-local"
-            value={toDatetimeLocalValue(new Date(formData.attention_datetime))}
-            onChange={handleAttentionDatetimeChange}
-            required
-            className="ti-datetime"
-          />
-        </div>
-
-        <div>
-          <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-            Usuario atendido
-          </label>
-          <input
-            type="text"
-            name="attended_user"
-            placeholder="Nombre del usuario atendido"
-            value={formData.attended_user}
-            onChange={handleChange}
-            required
-            className="ti-input"
-          />
+        <div style={{
+          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform var(--transition-fast)',
+          color: 'var(--text-secondary)',
+          fontSize: '20px'
+        }}>
+          ▼
         </div>
       </div>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-          Título breve
-        </label>
-        <input
-          type="text"
-          name="title"
-          placeholder="Descripción corta del problema"
-          value={formData.title}
-          onChange={handleChange}
-          required
-          className="ti-input"
-        />
-      </div>
+      {isExpanded && (
+        <form onSubmit={handleSubmit} className="animate-fade-in">
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '20px',
+            marginBottom: '20px'
+          }}>
+            <div>
+              <label>Fecha de cierre</label>
+              <DatePicker
+                selected={new Date(formData.resolution_date)}
+                onChange={handleResolutionDateChange}
+                dateFormat="yyyy-MM-dd"
+                locale={es}
+                className="custom-datepicker"
+                calendarClassName="custom-calendar"
+              />
+            </div>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-          Sistema afectado
-        </label>
-        <input
-          type="text"
-          name="affected_tool"
-          placeholder="Herramienta o sistema"
-          value={formData.affected_tool}
-          onChange={handleChange}
-          required
-          className="ti-input"
-        />
-      </div>
+            <div>
+              <label>Técnico asignado</label>
+              <input
+                type="text"
+                value={formData.responsible}
+                disabled
+                style={{ cursor: 'not-allowed', opacity: 0.7, fontWeight: 600 }}
+              />
+            </div>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-          Descripción del problema
-        </label>
-        <textarea
-          name="problem_description"
-          placeholder="¿Cuál fue el problema?"
-          value={formData.problem_description}
-          onChange={handleChange}
-          required
-          rows={3}
-          className="ti-textarea"
-        />
-      </div>
+            <div>
+              <label>Fecha y hora de atención *</label>
+              <DatePicker
+                selected={new Date(formData.attention_datetime)}
+                onChange={handleAttentionDateTimeChange}
+                dateFormat="yyyy-MM-dd HH:mm"
+                locale={es}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                timeCaption="Hora"
+                className="custom-datepicker"
+                calendarClassName="custom-calendar"
+              />
+            </div>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-          Acciones realizadas
-        </label>
-        <textarea
-          name="actions_taken"
-          placeholder="Pasos específicos realizados para resolver"
-          value={formData.actions_taken}
-          onChange={handleChange}
-          required
-          rows={3}
-          className="ti-textarea"
-        />
-      </div>
+            <div>
+              <label>Usuario atendido *</label>
+              <input
+                type="text"
+                name="attended_user"
+                placeholder="Nombre del usuario"
+                value={formData.attended_user}
+                onChange={handleChange}
+                required
+              />
+            </div>
+          </div>
 
-      <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-          Observaciones finales
-        </label>
-        <textarea
-          name="observations"
-          placeholder="Notas adicionales o recomendaciones"
-          value={formData.observations}
-          onChange={handleChange}
-          rows={2}
-          className="ti-textarea"
-        />
-      </div>
+          <div style={{ marginBottom: '20px' }}>
+            <label>Título breve *</label>
+            <input
+              type="text"
+              name="title"
+              placeholder="Resumen del problema"
+              value={formData.title}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-      {error && (
-        <div style={{ color: 'var(--color-error)', marginBottom: '12px', fontSize: '13px' }}>
-          {error}
-        </div>
+          <div style={{ marginBottom: '20px' }}>
+            <label>Sistema afectado *</label>
+            <input
+              type="text"
+              name="affected_tool"
+              placeholder="Herramienta o sistema"
+              value={formData.affected_tool}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label>Descripción del problema *</label>
+            <textarea
+              name="problem_description"
+              placeholder="¿Cuál fue el problema?"
+              value={formData.problem_description}
+              onChange={handleChange}
+              required
+              rows={3}
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label>Acciones realizadas *</label>
+            <textarea
+              name="actions_taken"
+              placeholder="Pasos realizados para resolver"
+              value={formData.actions_taken}
+              onChange={handleChange}
+              required
+              rows={3}
+            />
+          </div>
+
+          <div style={{ marginBottom: '24px' }}>
+            <label>Observaciones finales</label>
+            <textarea
+              name="observations"
+              placeholder="Notas adicionales o recomendaciones"
+              value={formData.observations}
+              onChange={handleChange}
+              rows={2}
+            />
+          </div>
+
+          {error && (
+            <div style={{ 
+              color: 'var(--color-error)', 
+              marginBottom: '16px', 
+              fontSize: '13px',
+              padding: '12px',
+              background: 'var(--color-error-bg)',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>⚠</span> {error}
+            </div>
+          )}
+
+          {success && (
+            <div style={{ 
+              color: 'var(--color-success)', 
+              marginBottom: '16px', 
+              fontSize: '13px',
+              padding: '12px',
+              background: 'var(--color-success-bg)',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>✓</span> Incidencia registrada correctamente
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              className="btn btn-secondary"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary"
+            >
+              {loading ? 'Guardando...' : 'Guardar incidencia'}
+            </button>
+          </div>
+        </form>
       )}
-
-      <button
-        type="submit"
-        disabled={loading}
-        style={{
-          padding: '10px 18px',
-          background: 'var(--accent-primary)',
-          color: 'var(--bg-main)',
-          border: 'none',
-          borderRadius: '10px',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          fontWeight: 800,
-          fontSize: '13px',
-        }}
-      >
-        {loading ? 'Guardando...' : 'Guardar'}
-      </button>
-    </form>
+    </div>
   )
 }

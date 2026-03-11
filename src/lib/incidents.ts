@@ -66,3 +66,61 @@ export async function deleteIncident(id: string) {
   const { error } = await supabase.from('incidents').delete().eq('id', id)
   if (error) throw error
 }
+
+export interface IncidentByDate {
+  date: string
+  count: number
+}
+
+export async function getIncidentsByDate(): Promise<IncidentByDate[]> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('incidents')
+    .select('resolution_date')
+    .order('resolution_date', { ascending: true })
+
+  if (error) throw error
+
+  const countByDate: Record<string, number> = {}
+
+  for (const incident of data || []) {
+    if (incident.resolution_date) {
+      const date = incident.resolution_date.split('T')[0]
+      countByDate[date] = (countByDate[date] || 0) + 1
+    }
+  }
+
+  return Object.entries(countByDate).map(([date, count]) => ({
+    date,
+    count,
+  }))
+}
+
+export interface IncidentByTechnician {
+  technician: string
+  count: number
+}
+
+export async function getIncidentsByTechnician(): Promise<IncidentByTechnician[]> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('incidents')
+    .select('responsible')
+    .order('responsible', { ascending: true })
+
+  if (error) throw error
+
+  const countByTechnician: Record<string, number> = {}
+
+  for (const incident of data || []) {
+    if (incident.responsible) {
+      countByTechnician[incident.responsible] = (countByTechnician[incident.responsible] || 0) + 1
+    }
+  }
+
+  return Object.entries(countByTechnician)
+    .map(([technician, count]) => ({ technician, count }))
+    .sort((a, b) => b.count - a.count)
+}

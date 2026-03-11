@@ -1,13 +1,17 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Historial de Incidencias TI',
-  description: 'MVP para registro histórico de incidencias TI resueltas',
-  viewport: 'width=device-width, initial-scale=1',
+  title: 'STOTOMAS - Historial de Incidencias TI',
+  description: 'Sistema de registro y seguimiento de incidencias técnicas resueltas',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
