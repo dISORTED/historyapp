@@ -1,250 +1,215 @@
-# Historial de Incidencias TI - MVP
+# Historial de Incidencias TI
 
-MVP simple y funcional para registro histórico de incidencias TI resueltas. Una aplicación minimalista enfocada en claridad, rapidez y facilidad de uso sin complicaciones de workflows, estados o SLAs.
+Aplicación web para registrar, consultar y analizar incidencias técnicas resueltas.
 
-## 🎯 Características
+Está construida con `Next.js 14`, `React 18`, `TypeScript` y `Supabase`, con enfoque en:
 
-- ✅ **Registro rápido**: Formulario simple con campos esenciales
-- 🔍 **Búsqueda**: Por palabra clave en título, descripción, sistema, responsable
-- 📅 **Filtros por fecha**: Rango de resolución de incidencias
-- 📊 **Listado compacto**: Tabla con detalles desplegables
-- 🔐 **Autenticación**: Con Supabase Auth
-- 🔒 **RLS**: Cada usuario solo ve sus propios registros
-- ⚡ **Minimalista**: Sin automatizaciones complejas
+- registro rápido de tickets
+- historial claro para técnicos
+- panel admin con analítica básica
+- control de acceso con `Supabase Auth` y `RLS`
 
-## 📋 Campos de una Incidencia
+## Qué hace hoy
 
-- **Fecha de resolución**: Cuándo se resolvió
-- **Título breve**: Descripción corta del problema
-- **Descripción del problema**: Detalles técnicos del issue
-- **Acciones realizadas**: Pasos específicos ejecutados
-- **Sistema afectado**: Herramienta o servicio
-- **Responsable**: Quién lo resolvió
-- **Observaciones**: Notas adicionales (opcional)
+- Autenticación por correo y contraseña con Supabase
+- Registro de incidencias con código de ticket automático
+- Historial para usuarios comunes con búsqueda, filtros, orden y paginación
+- Panel admin con KPIs, gráficos y vista global
+- Restricción de incidencias por usuario vía RLS
+- Acceso admin reservado al correo:
+  `sebastianecheverria2019@gmail.com`
 
-## 🚀 Quick Start
+## Stack
 
-### 1. Clonar y instalar
+- `Next.js 14` App Router
+- `React 18`
+- `TypeScript`
+- `Supabase`
+- `Recharts`
+- `react-datepicker`
+- `date-fns`
+
+## Estructura
+
+```txt
+src/
+  app/
+    admin/
+    dashboard.tsx
+    globals.css
+    layout.tsx
+    page.tsx
+  components/
+    admin-*.tsx
+    auth.tsx
+    incident-*.tsx
+    incidents-chart.tsx
+    live-clock.tsx
+    logo.tsx
+  lib/
+    admin.ts
+    incidents.ts
+    supabase-client.ts
+    types.ts
+
+scripts/
+  schema.sql
+
+TESTING.md
+AGENTS.md
+```
+
+## Requisitos
+
+- `Node.js 18+`
+- proyecto Supabase creado
+- variables públicas de Supabase
+
+## Variables de entorno
+
+Crea un archivo `.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
+```
+
+## Instalación
 
 ```bash
-git clone <repo-url>
-cd historyapp
 npm install
 ```
 
-### 2. Configurar Supabase
-
-#### a) Crear proyecto en Supabase
-1. Ve a [app.supabase.com](https://app.supabase.com)
-2. Crea un nuevo proyecto
-3. Espera a que se inicialice
-
-#### b) Crear tabla y políticas
-1. Ve a **SQL Editor**
-2. Abre un nuevo query
-3. Copia el contenido de `scripts/schema.sql`
-4. Ejecuta el SQL completo
-
-Este script crea:
-- Tabla `incidents` con campos
-- Índices para búsquedas rápidas
-- Row Level Security (RLS) para privacidad
-- Políticas: usuarios solo ven/editan sus registros
-
-#### c) Obtener credenciales
-1. Ve a **Project Settings** → **API**
-2. Copia:
-   - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
-   - `anon public` → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-### 3. Configurar variables de entorno
-
-```bash
-cp .env.example .env.local
-```
-
-Edita `.env.local`:
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=ey...
-```
-
-### 4. Ejecutar localmente
+## Desarrollo local
 
 ```bash
 npm run dev
 ```
 
-Accede a: http://localhost:3000
+Si el entorno local queda en un estado raro, puedes limpiar `.next` y levantar otra vez:
 
-## 📦 Stack Tecnológico
-
-- **Frontend**: Next.js 14 + React 18 + TypeScript
-- **Backend**: Supabase (PostgreSQL + Auth + API)
-- **Autenticación**: Supabase Auth (email/password)
-- **Base de datos**: PostgreSQL con RLS
-- **Deploy**: Vercel (frontend) + Supabase Cloud (backend)
-- **Estilos**: CSS inline minimalista (sin frameworks)
-
-## 🔑 Características de Seguridad
-
-### Row Level Security (RLS)
-Cada usuario solo puede:
-- **Ver** sus propias incidencias
-- **Crear** incidencias bajo su ID de usuario
-- **Actualizar** sus propios registros
-- **Eliminar** sus propios registros
-
-### Autenticación
-- Email verification requerida para registros
-- Contraseñas hasheadas en Supabase
-- Sesiones gestiona automáticamente
-
-## 🌐 Deploy en Vercel
-
-### 1. Subir a GitHub
 ```bash
-git add .
-git commit -m "MVP historial incidencias"
-git push origin main
+npm run dev:clean
 ```
 
-### 2. Conectar con Vercel
-1. Ve a [vercel.com](https://vercel.com)
-2. Importa el repo desde GitHub
-3. En **Environment Variables**, agrega:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. Deploy automático
+## Scripts
 
-### 3. URL Pública
-Tu app estará disponible en: `https://[proyecto].vercel.app`
-
-## 📊 Estructura del Proyecto
-
-```
-historyapp/
-├── src/
-│   ├── app/                 # Next.js app directory
-│   │   ├── page.tsx         # Página principal
-│   │   ├── dashboard.tsx    # Componente dashboard
-│   │   ├── layout.tsx       # Layout root
-│   │   └── globals.css      # Estilos globales
-│   ├── components/          # Componentes React
-│   │   ├── auth.tsx         # Autenticación
-│   │   ├── incident-form.tsx # Formulario
-│   │   └── incident-list.tsx # Listado
-│   └── lib/                 # Utilidades
-│       ├── supabase-client.ts
-│       ├── types.ts
-│       └── incidents.ts
-├── scripts/
-│   ├── schema.sql           # Script de BD
-│   └── setup-instructions.sh
-├── package.json
-├── tsconfig.json
-└── next.config.js
-```
-
-## 🎨 Interfaz
-
-### Formulario de Registro
-- Grid 2 columnas en desktop (responsive)
-- Campos requeridos marcados con *
-- Submit desactiva durante carga
-- Mensajes de error claros
-
-### Listado de Incidencias
-- Tabla compacta con scroll horizontal en móvil
-- Búsqueda en tiempo real
-- Filtros por rango de fechas
-- Detalles desplegables (sin popup)
-- Última columna con resumen + `<details>`
-
-### Diseño
-- Colores neutros: grises, azules, rojos
-- Tipografía del sistema
-- Espaciado consistente
-- Responsive: grid a 1 columna en móvil
-
-## 🔍 Búsqueda y Filtros
-
-### Por palabra clave
-Busca en:
-- Título de incidencia
-- Descripción del problema
-- Acciones realizadas
-- Sistema afectado
-- Responsable
-
-### Por fecha
-- Campo "Desde" (fecha mínima)
-- Campo "Hasta" (fecha máxima)
-- Filtro inclusivo en ambos extremos
-
-Combinable: puedes buscar palabra + rango de fechas simultáneamente.
-
-## 📝 Ejemplos de Uso
-
-### Crear incidencia
-1. Llena el formulario (fecha, título, descripción, etc.)
-2. Click en "Registrar Incidencia"
-3. Aparece en la tabla automáticamente
-
-### Buscar incidencia
-1. Escribe en "Buscar (palabra clave)"
-2. Selecciona rango de fechas si es necesario
-3. Tabla se filtra automáticamente
-
-### Ver detalles completos
-1. En la tabla, click en "Ver" (último campo)
-2. Se expande con problema, acciones, observaciones
-3. Click nuevamente para colapsar
-
-## 🛠️ Desarrollo
-
-### Instalar dependencias
-```bash
-npm install
-```
-
-### Ejecutar servidor de desarrollo
 ```bash
 npm run dev
-```
-
-### Build para producción
-```bash
 npm run build
 npm start
-```
-
-### Type checking
-```bash
 npm run type-check
 ```
 
-## 🔮 Posibles Mejoras Futuras
+Nota:
+- `npm run lint` existe en `package.json`, pero en este repo puede abrir el asistente interactivo de configuración de Next/ESLint si no está totalmente configurado.
+- No hay test runner automático configurado aún.
 
-- Edición y eliminación desde la UI (actualmente solo crear/leer)
-- Exportar a CSV/PDF
-- Etiquetas o categorías
-- Búsqueda fulltext en PostgreSQL
-- Gráficos de incidencias por periodo
-- Integración con Slack para notificaciones
-- Autosuggest en campos (sistemas conocidos, responsables, etc.)
+## Base de datos
 
-## 📄 Licencia
+El SQL fuente de verdad está en:
 
-MIT - Libre para usar y modificar
+[`scripts/schema.sql`](./scripts/schema.sql)
 
-## 👥 Soporte
+Ese archivo incluye:
 
-- Docs de Supabase: https://supabase.com/docs
-- Docs de Next.js: https://nextjs.org/docs
-- Issues: Crea un issue en GitHub
+- tabla `public.incidents`
+- índices
+- políticas RLS
+- soporte para `ticket_code`
+- referencia para la policy admin por email
 
----
+## Tickets
 
-**Versión**: 0.1.0  
-**Última actualización**: Enero 2025
+Cada incidencia recibe un código automático al crearse, por ejemplo:
+
+```txt
+TKT-20260313-104530-AB12
+```
+
+Ese código se puede usar para buscar incidencias más rápido tanto en el historial normal como en el panel admin.
+
+## Seguridad
+
+### RLS
+
+La tabla `incidents` usa políticas para que:
+
+- un usuario vea sus propios registros
+- un usuario cree, actualice y elimine solo sus registros
+- el admin definido pueda consultar el panorama global
+
+### Admin
+
+El frontend y la política recomendada están alineados para permitir acceso admin solo a:
+
+```txt
+sebastianecheverria2019@gmail.com
+```
+
+## Estado actual del proyecto
+
+Actualmente el sistema incluye:
+
+- dashboard principal con formulario, gráfico, reloj y resumen lateral
+- historial de incidencias con paginación
+- detalle y edición de incidencias
+- panel admin con filtros, KPIs y gráficos
+
+No incluye todavía:
+
+- suite automática de tests
+- backend custom con API routes
+- setup-db funcional por script (`npm run setup-db` sigue roto si falta `scripts/setup-db.js`)
+
+## Testing manual
+
+La referencia oficial de pruebas manuales está en:
+
+[`TESTING.md`](./TESTING.md)
+
+Flujo recomendado:
+
+1. `npm run dev`
+2. abrir `http://localhost:3000`
+3. ejecutar uno o más escenarios de `TESTING.md`
+4. revisar consola del navegador y comportamiento real
+
+## Deploy en Vercel
+
+### 1. Validar localmente
+
+```bash
+npm run type-check
+npm run build
+```
+
+### 2. Configurar variables en Vercel
+
+Debes cargar:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+### 3. Deploy
+
+Importa el repositorio en Vercel y despliega normalmente.
+
+## Recomendaciones antes de testear en entorno
+
+- limpiar incidencias y usuarios de prueba en Supabase
+- dejar solo la cuenta admin real
+- verificar la policy admin por email
+- probar login, creación, búsqueda, edición, eliminación y acceso admin
+
+## Roadmap corto sugerido
+
+- corregir por completo textos con tildes rotas o mojibake restantes
+- unificar aún más el manejo de sesión
+- reducir consultas duplicadas del dashboard principal
+- agregar pruebas automáticas básicas
+- documentar migraciones SQL con más detalle
+
+## Licencia
+
+Uso interno / definir según necesidad del proyecto.
