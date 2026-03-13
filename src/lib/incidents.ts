@@ -1,5 +1,22 @@
 import { createClient } from './supabase-client'
-import { CreateIncidentInput } from './types'
+import { AdminIncidentFilters, CreateIncidentInput, Incident } from './types'
+
+function generateTicketCode() {
+  const now = new Date()
+  const datePart = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('')
+  const timePart = [
+    String(now.getHours()).padStart(2, '0'),
+    String(now.getMinutes()).padStart(2, '0'),
+    String(now.getSeconds()).padStart(2, '0'),
+  ].join('')
+  const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase()
+
+  return `TKT-${datePart}-${timePart}-${randomPart}`
+}
 
 export async function createIncident(incident: CreateIncidentInput) {
   const supabase = createClient()
@@ -17,6 +34,7 @@ export async function createIncident(incident: CreateIncidentInput) {
   // FORZAMOS responsible desde metadata (no desde el formulario)
   const payload = {
     ...incident,
+    ticket_code: incident.ticket_code || generateTicketCode(),
     responsible: technicianName,
     user_id: user.id,
   }
@@ -34,7 +52,7 @@ export async function getIncidents(searchTerm = '', dateFrom: string | null = nu
 
   if (searchTerm) {
     query = query.or(
-      `title.ilike.%${searchTerm}%,problem_description.ilike.%${searchTerm}%,actions_taken.ilike.%${searchTerm}%,affected_tool.ilike.%${searchTerm}%,responsible.ilike.%${searchTerm}%`
+      `ticket_code.ilike.%${searchTerm}%,title.ilike.%${searchTerm}%,problem_description.ilike.%${searchTerm}%,actions_taken.ilike.%${searchTerm}%,affected_tool.ilike.%${searchTerm}%,responsible.ilike.%${searchTerm}%`
     )
   }
 
@@ -123,4 +141,56 @@ export async function getIncidentsByTechnician(): Promise<IncidentByTechnician[]
   return Object.entries(countByTechnician)
     .map(([technician, count]) => ({ technician, count }))
     .sort((a, b) => b.count - a.count)
+}
+
+export interface IncidentsBySystem {
+  system: string
+  count: number
+}
+
+export async function getTopSystemsWithFailures(limit = 5): Promise<IncidentsBySystem[]> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('incidents')
+    .select('affected_tool')
+
+  if (error) throw error
+
+  const counts: Record<string, number> = {}
+
+  for (const incident of data || []) {
+    const key = incident.affected_tool ? String(incident.affected_tool).trim() : ''
+    if (!key) continue
+    counts[key] = (counts[key] || 0) + 1
+  }
+
+  return Object.entries(counts)
+    .map(([system, count]) => ({ system, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+}
+
+export async function getAdminIncidents(filters: AdminIncidentFilters = {}): Promise<Incident[]> {
+  const supabase = createClient()
+
+  let query = supabase
+    .from('incidents')
+    .select('*')
+    .order('attention_datetime', { ascending: false, nullsFirst: false })
+
+  if (filters.searchTerm) {
+    query = query.or(
+      `ticket_code.ilike.%${filters.searchTerm}%,title.ilike.%${filters.searchTerm}%,problem_description.ilike.%${filters.searchTerm}%,actions_taken.ilike.%${filters.searchTerm}%,affected_tool.ilike.%${filters.searchTerm}%,responsible.ilike.%${filters.searchTerm}%,attended_user.ilike.%${filters.searchTerm}%`
+    )
+  }
+
+  if (filters.dateFrom) query = query.gte('resolution_date', filters.dateFrom)
+  if (filters.dateTo) query = query.lte('resolution_date', filters.dateTo)
+  if (filters.technician) query = query.eq('responsible', filters.technician)
+  if (filters.affectedTool) query = query.eq('affected_tool', filters.affectedTool)
+
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
 }

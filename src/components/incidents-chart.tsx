@@ -62,7 +62,15 @@ export default function IncidentsChart({ refreshTrigger }: IncidentsChartProps) 
   }
 
   return (
-    <div className="card animate-fade-in">
+    <div
+      className="card animate-fade-in"
+      style={{
+        minHeight: '320px',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
       <div style={{ marginBottom: '20px' }}>
         <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>
           Incidencias por día
@@ -72,7 +80,13 @@ export default function IncidentsChart({ refreshTrigger }: IncidentsChartProps) 
         </p>
       </div>
 
-      <div style={{ height: '280px', width: '100%' }}>
+      <div
+        style={{
+          width: '100%',
+          height: '240px',
+          marginTop: 'auto',
+        }}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 15, left: 0, bottom: 0 }}>
             <defs>

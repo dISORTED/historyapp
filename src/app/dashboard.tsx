@@ -1,13 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { createClient } from '@/lib/supabase-client'
+import Link from 'next/link'
+import { createClient, getSessionSnapshot } from '@/lib/supabase-client'
 import IncidentForm from '@/components/incident-form'
 import IncidentList from '@/components/incident-list'
 import IncidentsChart from '@/components/incidents-chart'
-import IncidentsByTechnician from '@/components/incidents-by-technician'
 import AuthComponent from '@/components/auth'
+import DashboardSidePanel from '@/components/dashboard-side-panel'
+import LiveClock from '@/components/live-clock'
 import Logo from '@/components/logo'
+import { isPrimaryAdmin } from '@/lib/admin'
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
@@ -15,13 +18,11 @@ export default function Dashboard() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const [appError, setAppError] = useState<string | null>(null)
-
   const [techName, setTechName] = useState('')
   const [savingName, setSavingName] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
-  const [showNameEditor, setShowNameEditor] = useState(false)
-
   const [nameDirty, setNameDirty] = useState(false)
+
   const lastUserIdRef = useRef<string | null>(null)
   const mountedRef = useRef(true)
 
@@ -36,29 +37,26 @@ export default function Dashboard() {
     try {
       setAppError(null)
       const supabase = createClient()
+      const { session, error } = await getSessionSnapshot()
 
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession()
+      if (error) {
+        await supabase.auth.signOut()
+      }
 
-      if (error) throw error
       if (!mountedRef.current) return
 
-      const u = session?.user || null
-      setUser(u)
+      const current = session?.user || null
+      setUser(current)
 
-      if (!u) {
+      if (!current) {
         lastUserIdRef.current = null
         setTechName('')
         setNameDirty(false)
         return
       }
 
-      const currentUserId = String(u.id)
-      const existingName = u?.user_metadata?.name
-        ? String(u.user_metadata.name)
-        : ''
+      const currentUserId = String(current.id)
+      const existingName = current?.user_metadata?.name ? String(current.user_metadata.name) : ''
 
       if (lastUserIdRef.current !== currentUserId) {
         lastUserIdRef.current = currentUserId
@@ -67,9 +65,7 @@ export default function Dashboard() {
         return
       }
 
-      if (existingName) {
-        setTechName(existingName)
-      } else if (!nameDirty) {
+      if (existingName || !nameDirty) {
         setTechName(existingName)
       }
     } catch (e: unknown) {
@@ -85,6 +81,14 @@ export default function Dashboard() {
       setAppError(msg || 'Error inesperado cargando la sesión.')
       setUser(null)
     }
+  }
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    setUser(null)
+    setTechName('')
+    setNameDirty(false)
   }
 
   useEffect(() => {
@@ -130,11 +134,8 @@ export default function Dashboard() {
 
       setNameDirty(false)
       await loadSession()
-      setShowNameEditor(false)
     } catch (err) {
-      setNameError(
-        err instanceof Error ? err.message : 'No se pudo guardar el nombre.'
-      )
+      setNameError(err instanceof Error ? err.message : 'No se pudo guardar el nombre.')
     } finally {
       setSavingName(false)
     }
@@ -142,23 +143,27 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        background: 'var(--bg-main)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
+      <div
+        style={{
+          minHeight: '100vh',
+          background: 'var(--bg-main)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            border: '3px solid var(--border-color)',
-            borderTopColor: 'var(--accent-primary)',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px'
-          }} />
+          <div
+            style={{
+              width: '48px',
+              height: '48px',
+              border: '3px solid var(--border-color)',
+              borderTopColor: 'var(--accent-primary)',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 16px',
+            }}
+          />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           <p style={{ color: 'var(--text-secondary)' }}>Cargando...</p>
         </div>
@@ -189,27 +194,26 @@ export default function Dashboard() {
             textAlign: 'center',
           }}
         >
-          <div style={{
-            width: '56px',
-            height: '56px',
-            margin: '0 auto 20px',
-            background: 'var(--color-error-bg)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '28px'
-          }}>
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              margin: '0 auto 20px',
+              background: 'var(--color-error-bg)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '28px',
+            }}
+          >
             ⚠
           </div>
           <h2 style={{ marginTop: 0, marginBottom: '12px', fontSize: '20px' }}>Error de conexión</h2>
           <p style={{ opacity: 0.8, fontSize: '14px', marginBottom: '24px', color: 'var(--text-secondary)' }}>
             {appError}
           </p>
-          <button
-            onClick={() => location.reload()}
-            className="btn btn-primary"
-          >
+          <button onClick={() => location.reload()} className="btn btn-primary">
             Reintentar
           </button>
         </div>
@@ -229,15 +233,17 @@ export default function Dashboard() {
           padding: '20px',
         }}
       >
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'radial-gradient(ellipse at top, rgba(0, 166, 128, 0.1) 0%, transparent 60%)',
-          pointerEvents: 'none'
-        }} />
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'radial-gradient(ellipse at top, rgba(0, 166, 128, 0.1) 0%, transparent 60%)',
+            pointerEvents: 'none',
+          }}
+        />
         <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px' }}>
           <AuthComponent />
         </div>
@@ -245,9 +251,8 @@ export default function Dashboard() {
     )
   }
 
-  const technicianName = user?.user_metadata?.name
-    ? String(user.user_metadata.name).trim()
-    : ''
+  const technicianName = user?.user_metadata?.name ? String(user.user_metadata.name).trim() : ''
+  const isAdmin = isPrimaryAdmin(user)
 
   if (!technicianName) {
     return (
@@ -276,20 +281,10 @@ export default function Dashboard() {
             <Logo />
           </div>
 
-          <h2 style={{ 
-            marginTop: 0, 
-            marginBottom: '8px', 
-            fontSize: '22px',
-            fontWeight: 700
-          }}>
+          <h2 style={{ marginTop: 0, marginBottom: '8px', fontSize: '22px', fontWeight: 700 }}>
             ¡Bienvenido a STOTOMAS!
           </h2>
-          <p style={{ 
-            marginTop: 0, 
-            fontSize: '14px', 
-            color: 'var(--text-secondary)',
-            marginBottom: '28px'
-          }}>
+          <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '28px' }}>
             Para comenzar, ingresa tu nombre de técnico.
           </p>
 
@@ -302,23 +297,21 @@ export default function Dashboard() {
               setNameDirty(true)
             }}
             placeholder="Ej: Sebastián Echeverría"
-            style={{ 
-              width: '100%', 
-              padding: '14px 16px',
-              fontSize: '15px'
-            }}
+            style={{ width: '100%', padding: '14px 16px', fontSize: '15px' }}
             autoFocus
           />
 
           {nameError && (
-            <div style={{ 
-              color: 'var(--color-error)', 
-              marginTop: '12px',
-              fontSize: '13px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
+            <div
+              style={{
+                color: 'var(--color-error)',
+                marginTop: '12px',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
               <span>⚠</span> {nameError}
             </div>
           )}
@@ -370,54 +363,43 @@ export default function Dashboard() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <Logo />
-            <div style={{
-              paddingLeft: '20px',
-              borderLeft: '1px solid var(--border-color)'
-            }}>
-              <h1 style={{ 
-                margin: 0, 
-                fontSize: '18px', 
-                fontWeight: 600,
-                letterSpacing: '-0.01em'
-              }}>
+            <div style={{ paddingLeft: '20px', borderLeft: '1px solid var(--border-color)' }}>
+              <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.01em' }}>
                 Historial de Incidencias
               </h1>
-              <p style={{ 
-                margin: '2px 0 0', 
-                fontSize: '13px', 
-                color: 'var(--text-secondary)'
-              }}>
+              <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
                 Registro de soluciones técnicas
               </p>
             </div>
           </div>
 
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '16px',
-            fontSize: '14px'
-          }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px' }}>
+            {isAdmin && (
+              <Link href="/admin" className="btn btn-secondary" style={{ textDecoration: 'none', padding: '8px 14px' }}>
+                Panel admin
+              </Link>
+            )}
+            <button onClick={handleSignOut} className="btn btn-secondary" style={{ padding: '8px 14px' }}>
+              Cerrar sesión
+            </button>
             <div style={{ textAlign: 'right' }}>
-              <p style={{ margin: 0, fontWeight: 500 }}>
-                {technicianName}
-              </p>
-              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
-                {user.email}
-              </p>
+              <p style={{ margin: 0, fontWeight: 500 }}>{technicianName}</p>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>{user.email}</p>
             </div>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              background: 'var(--accent-gradient)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 600,
-              fontSize: '16px',
-              boxShadow: 'var(--shadow-glow)'
-            }}>
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                background: 'var(--accent-gradient)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 600,
+                fontSize: '16px',
+                boxShadow: 'var(--shadow-glow)',
+              }}
+            >
               {technicianName.charAt(0).toUpperCase()}
             </div>
           </div>
@@ -431,32 +413,34 @@ export default function Dashboard() {
           padding: '32px 24px',
         }}
       >
-        <div 
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '55% 45%',
-            gap: '24px', 
-            marginBottom: '32px' 
-          }}
-          className="animate-fade-in"
-        >
-          <div>
-            <IncidentForm
-              onSuccess={() => setRefreshTrigger((prev) => prev + 1)}
-            />
-          </div>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateRows: '1fr 1fr',
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1.25fr) minmax(340px, 0.95fr)',
             gap: '24px',
-            height: '100%'
-          }}>
-            <div>
+            marginBottom: '32px',
+            alignItems: 'start',
+          }}
+          className="animate-fade-in dashboard-top-grid"
+        >
+          <div style={{ height: '100%' }}>
+            <IncidentForm onSuccess={() => setRefreshTrigger((prev) => prev + 1)} />
+          </div>
+          <div
+            className="dashboard-right-column"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: '320px',
+              gap: '16px',
+              width: '100%',
+            }}
+          >
+            <div className="dashboard-chart-panel" style={{ minHeight: '320px', width: '100%' }}>
               <IncidentsChart refreshTrigger={refreshTrigger} />
             </div>
-            <div>
-              <IncidentsByTechnician refreshTrigger={refreshTrigger} />
-            </div>
+            <LiveClock />
+            <DashboardSidePanel refreshTrigger={refreshTrigger} />
           </div>
         </div>
         <div className="animate-fade-in" style={{ animationDelay: '100ms' }}>

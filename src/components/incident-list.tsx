@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { es } from 'date-fns/locale'
@@ -34,8 +34,23 @@ function formatTime(value: string | null | undefined) {
   return d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
 }
 
+function toSearchableString(incident: Incident) {
+  return [
+    incident.ticket_code,
+    incident.title,
+    incident.problem_description,
+    incident.actions_taken,
+    incident.affected_tool,
+    incident.responsible,
+    incident.attended_user,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
 export default function IncidentList({ refreshTrigger }: IncidentListProps) {
-  const [incidents, setIncidents] = useState<Incident[]>([])
+  const [allIncidents, setAllIncidents] = useState<Incident[]>([])
   const [loading, setLoading] = useState(true)
   const [listError, setListError] = useState<string | null>(null)
 
@@ -44,21 +59,21 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
   const [dateTo, setDateTo] = useState<Date | null>(null)
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(12)
+
+  const deferredSearchTerm = useDeferredValue(searchTerm)
 
   const loadIncidents = async () => {
     setLoading(true)
     setListError(null)
     try {
-      const data = await getIncidents(
-        searchTerm,
-        dateFrom ? dateFrom.toISOString().split('T')[0] : null,
-        dateTo ? dateTo.toISOString().split('T')[0] : null
-      )
-      setIncidents(data || [])
+      const data = await getIncidents()
+      setAllIncidents(data || [])
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al cargar incidencias'
       setListError(msg)
-      setIncidents([])
+      setAllIncidents([])
     } finally {
       setLoading(false)
     }
@@ -66,10 +81,35 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
 
   useEffect(() => {
     loadIncidents()
-  }, [searchTerm, dateFrom, dateTo, refreshTrigger])
+  }, [refreshTrigger])
+
+  const filteredIncidents = useMemo(() => {
+    const normalizedSearch = deferredSearchTerm.trim().toLowerCase()
+
+    return allIncidents.filter((incident) => {
+      if (normalizedSearch && !toSearchableString(incident).includes(normalizedSearch)) {
+        return false
+      }
+
+      const resolutionTime = new Date(incident.resolution_date).getTime()
+      if (dateFrom) {
+        const from = new Date(dateFrom)
+        from.setHours(0, 0, 0, 0)
+        if (resolutionTime < from.getTime()) return false
+      }
+
+      if (dateTo) {
+        const to = new Date(dateTo)
+        to.setHours(23, 59, 59, 999)
+        if (resolutionTime > to.getTime()) return false
+      }
+
+      return true
+    })
+  }, [allIncidents, deferredSearchTerm, dateFrom, dateTo])
 
   const orderedIncidents = useMemo(() => {
-    const copy = [...incidents]
+    const copy = [...filteredIncidents]
     copy.sort((a, b) => {
       const ta = toTime(a.attention_datetime)
       const tb = toTime(b.attention_datetime)
@@ -81,7 +121,24 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
       return sortDir === 'desc' ? tb - ta : ta - tb
     })
     return copy
-  }, [incidents, sortDir])
+  }, [filteredIncidents, sortDir])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [deferredSearchTerm, dateFrom, dateTo, sortDir, refreshTrigger])
+
+  const totalPages = Math.max(1, Math.ceil(orderedIncidents.length / pageSize))
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  const pageStart = (currentPage - 1) * pageSize
+  const paginatedIncidents = orderedIncidents.slice(pageStart, pageStart + pageSize)
+  const shownFrom = orderedIncidents.length === 0 ? 0 : pageStart + 1
+  const shownTo = Math.min(pageStart + pageSize, orderedIncidents.length)
 
   const clearFilters = () => {
     setSearchTerm('')
@@ -93,33 +150,36 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
 
   return (
     <div className="card">
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        marginBottom: '24px',
-        flexWrap: 'wrap',
-        gap: '16px'
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '24px',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--bg-elevated)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '18px'
-          }}>
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--bg-elevated)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+            }}
+          >
             📋
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>
-              Historial de Incidencias
-            </h2>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Historial de incidencias</h2>
             <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-              {orderedIncidents.length} registro{orderedIncidents.length !== 1 ? 's' : ''} encontrado{orderedIncidents.length !== 1 ? 's' : ''}
+              {orderedIncidents.length} registro{orderedIncidents.length !== 1 ? 's' : ''} encontrado
+              {orderedIncidents.length !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
@@ -129,7 +189,13 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           className="btn btn-secondary"
           style={{ fontSize: '13px' }}
         >
-          <span style={{ transform: sortDir === 'desc' ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block', transition: 'transform var(--transition-fast)' }}>
+          <span
+            style={{
+              transform: sortDir === 'desc' ? 'rotate(180deg)' : 'rotate(0deg)',
+              display: 'inline-block',
+              transition: 'transform var(--transition-fast)',
+            }}
+          >
             ↑
           </span>
           {sortDir === 'desc' ? 'Más recientes' : 'Más antiguos'}
@@ -144,14 +210,14 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           marginBottom: '24px',
           padding: '20px',
           background: 'var(--bg-elevated)',
-          borderRadius: 'var(--radius-lg)'
+          borderRadius: 'var(--radius-lg)',
         }}
       >
         <div>
           <label>Buscar</label>
           <input
             type="text"
-            placeholder="Título, sistema, responsable..."
+            placeholder="Ticket, título, sistema, responsable..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -187,11 +253,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
 
         {hasFilters && (
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-            <button
-              onClick={clearFilters}
-              className="btn btn-secondary"
-              style={{ width: '100%' }}
-            >
+            <button onClick={clearFilters} className="btn btn-secondary" style={{ width: '100%' }}>
               Limpiar filtros
             </button>
           </div>
@@ -199,55 +261,50 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
       </div>
 
       {loading ? (
-        <div style={{ 
-          padding: '60px', 
-          textAlign: 'center',
-          color: 'var(--text-secondary)'
-        }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            border: '3px solid var(--border-color)',
-            borderTopColor: 'var(--accent-primary)',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 12px'
-          }} />
+        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <div
+            style={{
+              width: '32px',
+              height: '32px',
+              border: '3px solid var(--border-color)',
+              borderTopColor: 'var(--accent-primary)',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 12px',
+            }}
+          />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           <p>Cargando incidencias...</p>
         </div>
       ) : listError ? (
-        <div style={{ 
-          padding: '24px', 
-          textAlign: 'center',
-          background: 'var(--color-error-bg)',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid var(--color-error)'
-        }}>
-          <p style={{ margin: 0, color: 'var(--color-error)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+        <div
+          style={{
+            padding: '24px',
+            textAlign: 'center',
+            background: 'var(--color-error-bg)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--color-error)',
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              color: 'var(--color-error)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+          >
             <span>⚠</span> {listError}
           </p>
-          <button
-            onClick={loadIncidents}
-            className="btn btn-secondary"
-            style={{ marginTop: '16px' }}
-          >
+          <button onClick={loadIncidents} className="btn btn-secondary" style={{ marginTop: '16px' }}>
             Reintentar
           </button>
         </div>
       ) : orderedIncidents.length === 0 ? (
-        <div style={{ 
-          padding: '60px', 
-          textAlign: 'center',
-          color: 'var(--text-secondary)'
-        }}>
-          <div style={{
-            fontSize: '48px',
-            marginBottom: '16px',
-            opacity: 0.5
-          }}>
-            📭
-          </div>
+        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>📭</div>
           <p style={{ fontSize: '16px', marginBottom: '8px' }}>
             {hasFilters ? 'No se encontraron resultados' : 'No hay incidencias registradas'}
           </p>
@@ -256,72 +313,144 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           </p>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Hora</th>
-                <th>Usuario</th>
-                <th>Título</th>
-                <th>Sistema</th>
-                <th>Responsable</th>
-                <th></th>
-              </tr>
-            </thead>
+        <>
+          <div style={{ marginBottom: '12px' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+              Mostrando {shownFrom}-{shownTo} de {orderedIncidents.length} registros filtrados
+            </p>
+          </div>
 
-            <tbody>
-              {orderedIncidents.map((incident) => (
-                <tr key={incident.id}>
-                  <td>
-                    <span style={{ 
-                      display: 'inline-block',
-                      padding: '4px 10px',
-                      background: 'var(--bg-elevated)',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '13px'
-                    }}>
-                      {formatDate(incident.attention_datetime)}
-                    </span>
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
-                    {formatTime(incident.attention_datetime)}
-                  </td>
-                  <td>{incident.attended_user || '-'}</td>
-                  <td>
-                    <span style={{ fontWeight: 500 }}>
-                      {incident.title}
-                    </span>
-                  </td>
-                  <td>
-                    <span style={{
-                      display: 'inline-block',
-                      padding: '2px 8px',
-                      background: 'rgba(0, 166, 128, 0.15)',
-                      color: 'var(--accent-primary)',
-                      borderRadius: '20px',
-                      fontSize: '12px'
-                    }}>
-                      {incident.affected_tool}
-                    </span>
-                  </td>
-                  <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
-                    {incident.responsible}
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => setSelectedIncident(incident)}
-                      className="btn btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: '12px' }}
-                    >
-                      Ver
-                    </button>
-                  </td>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th>Ticket</th>
+                  <th>Fecha</th>
+                  <th>Hora</th>
+                  <th>Usuario</th>
+                  <th>Título</th>
+                  <th>Sistema</th>
+                  <th>Responsable</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody>
+                {paginatedIncidents.map((incident) => (
+                  <tr key={incident.id}>
+                    <td>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '4px 10px',
+                          background: 'rgba(0, 166, 128, 0.15)',
+                          color: 'var(--accent-primary)',
+                          borderRadius: '999px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {incident.ticket_code || incident.id.slice(0, 8).toUpperCase()}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '4px 10px',
+                          background: 'var(--bg-elevated)',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '13px',
+                        }}
+                      >
+                        {formatDate(incident.attention_datetime)}
+                      </span>
+                    </td>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                      {formatTime(incident.attention_datetime)}
+                    </td>
+                    <td>{incident.attended_user || '-'}</td>
+                    <td>
+                      <span style={{ fontWeight: 500 }}>{incident.title}</span>
+                    </td>
+                    <td>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          background: 'rgba(0, 166, 128, 0.15)',
+                          color: 'var(--accent-primary)',
+                          borderRadius: '20px',
+                          fontSize: '12px',
+                        }}
+                      >
+                        {incident.affected_tool}
+                      </span>
+                    </td>
+                    <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{incident.responsible}</td>
+                    <td>
+                      <button
+                        onClick={() => setSelectedIncident(incident)}
+                        className="btn btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '12px' }}
+                      >
+                        Ver
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '12px',
+              marginTop: '14px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ margin: 0 }}>Filas por página</label>
+              <select
+                value={pageSize}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value))
+                  setCurrentPage(1)
+                }}
+                style={{ width: '84px', padding: '8px 10px' }}
+              >
+                <option value={12}>12</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}
+                disabled={currentPage === 1}
+              >
+                Anterior
+              </button>
+              <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setCurrentPage((value) => Math.min(totalPages, value + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {selectedIncident && (

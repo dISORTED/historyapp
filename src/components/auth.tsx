@@ -28,8 +28,8 @@ export default function AuthComponent() {
           email,
           password,
           options: {
-            data: { name }
-          }
+            data: { name },
+          },
         })
         if (error) throw error
         setEmail('')
@@ -49,34 +49,41 @@ export default function AuthComponent() {
   }
 
   return (
-    <div className="card animate-fade-in" style={{ 
-      maxWidth: '420px', 
-      margin: '0 auto', 
-      padding: '40px 32px',
-      boxShadow: 'var(--shadow-lg)'
-    }}>
+    <div
+      className="card animate-fade-in"
+      style={{
+        maxWidth: '420px',
+        margin: '0 auto',
+        padding: '40px 32px',
+        boxShadow: 'var(--shadow-lg)',
+      }}
+    >
       <div style={{ marginBottom: '32px', textAlign: 'center' }}>
         <Logo />
       </div>
 
-      <h2 style={{ 
-        textAlign: 'center',
-        fontSize: '24px',
-        fontWeight: 700,
-        marginBottom: '8px',
-        letterSpacing: '-0.02em'
-      }}>
+      <h2
+        style={{
+          textAlign: 'center',
+          fontSize: '24px',
+          fontWeight: 700,
+          marginBottom: '8px',
+          letterSpacing: '-0.02em',
+        }}
+      >
         {mode === 'signin' ? '¡Bienvenido de vuelta!' : 'Crear cuenta'}
       </h2>
-      
-      <p style={{ 
-        textAlign: 'center',
-        color: 'var(--text-secondary)',
-        fontSize: '14px',
-        marginBottom: '28px'
-      }}>
-        {mode === 'signin' 
-          ? 'Ingresa tus credenciales para continuar' 
+
+      <p
+        style={{
+          textAlign: 'center',
+          color: 'var(--text-secondary)',
+          fontSize: '14px',
+          marginBottom: '28px',
+        }}
+      >
+        {mode === 'signin'
+          ? 'Ingresa tus credenciales para continuar'
           : 'Regístrate para comenzar a registrar incidencias'}
       </p>
 
@@ -118,33 +125,37 @@ export default function AuthComponent() {
         </div>
 
         {error && (
-          <div style={{ 
-            color: 'var(--color-error)', 
-            marginBottom: '20px', 
-            fontSize: '13px',
-            padding: '12px',
-            background: 'var(--color-error-bg)',
-            borderRadius: 'var(--radius-md)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
+          <div
+            style={{
+              color: 'var(--color-error)',
+              marginBottom: '20px',
+              fontSize: '13px',
+              padding: '12px',
+              background: 'var(--color-error-bg)',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
             <span>⚠</span> {error}
           </div>
         )}
 
         {successMessage && (
-          <div style={{ 
-            color: 'var(--color-success)', 
-            marginBottom: '20px', 
-            fontSize: '13px',
-            padding: '12px',
-            background: 'var(--color-success-bg)',
-            borderRadius: 'var(--radius-md)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
+          <div
+            style={{
+              color: 'var(--color-success)',
+              marginBottom: '20px',
+              fontSize: '13px',
+              padding: '12px',
+              background: 'var(--color-success-bg)',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
             <span>✓</span> {successMessage}
           </div>
         )}
@@ -157,31 +168,41 @@ export default function AuthComponent() {
         >
           {loading ? (
             <>
-              <span style={{
-                width: '18px',
-                height: '18px',
-                border: '2px solid rgba(255,255,255,0.3)',
-                borderTopColor: 'white',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }} />
+              <span
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTopColor: 'white',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                }}
+              />
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
               Procesando...
             </>
-          ) : mode === 'signin' ? 'Iniciar sesión' : 'Crear cuenta'}
+          ) : mode === 'signin' ? (
+            'Iniciar sesión'
+          ) : (
+            'Crear cuenta'
+          )}
         </button>
 
-        <div style={{ 
-          textAlign: 'center', 
-          marginTop: '20px',
-          paddingTop: '20px',
-          borderTop: '1px solid var(--border-light)'
-        }}>
-          <p style={{ 
-            color: 'var(--text-secondary)', 
-            fontSize: '14px',
-            margin: 0
-          }}>
+        <div
+          style={{
+            textAlign: 'center',
+            marginTop: '20px',
+            paddingTop: '20px',
+            borderTop: '1px solid var(--border-light)',
+          }}
+        >
+          <p
+            style={{
+              color: 'var(--text-secondary)',
+              fontSize: '14px',
+              margin: 0,
+            }}
+          >
             {mode === 'signin' ? '¿No tienes cuenta?' : '¿Ya tienes una cuenta?'}
             <button
               type="button"
@@ -198,7 +219,7 @@ export default function AuthComponent() {
                 fontWeight: 600,
                 marginLeft: '6px',
                 fontSize: '14px',
-                padding: 0
+                padding: 0,
               }}
             >
               {mode === 'signin' ? 'Regístrate' : 'Inicia sesión'}
