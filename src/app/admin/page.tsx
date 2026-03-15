@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import AuthComponent from '@/components/auth'
 import Logo from '@/components/logo'
@@ -60,6 +60,12 @@ export default function AdminPage() {
 
   const deferredSearchTerm = useDeferredValue(searchTerm)
   const isAdmin = isPrimaryAdmin(user)
+  const mountedRef = useRef(true)
+
+  const applyUserState = (nextUser: User | null) => {
+    if (!mountedRef.current) return
+    setUser(nextUser)
+  }
 
   useEffect(() => {
     const loadSession = async () => {
@@ -67,11 +73,15 @@ export default function AdminPage() {
       setError(null)
 
       try {
-        const supabase = createClient()
-        const { session, error: sessionError } = await getSessionSnapshot()
+        const { session, error: sessionError, timedOut } = await getSessionSnapshot()
 
         if (sessionError) {
-          await supabase.auth.signOut()
+          setError(sessionError.message || 'No se pudo cargar la sesión')
+          return
+        }
+
+        if (timedOut || session === undefined) {
+          return
         }
 
         setUser(session?.user ?? null)
@@ -83,6 +93,38 @@ export default function AdminPage() {
     }
 
     loadSession()
+  }, [])
+
+  useEffect(() => {
+    mountedRef.current = true
+
+    const supabase = createClient()
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mountedRef.current) return
+
+      if (
+        event === 'INITIAL_SESSION' ||
+        event === 'SIGNED_IN' ||
+        event === 'TOKEN_REFRESHED' ||
+        event === 'USER_UPDATED' ||
+        event === 'PASSWORD_RECOVERY'
+      ) {
+        setError(null)
+        applyUserState(session?.user ?? null)
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setError(null)
+        applyUserState(null)
+      }
+
+      setLoadingSession(false)
+    })
+
+    return () => {
+      mountedRef.current = false
+      data.subscription?.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {

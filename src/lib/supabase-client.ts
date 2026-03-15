@@ -16,18 +16,19 @@ export const createClient = () => {
 }
 
 interface SessionSnapshot {
-  session: Session | null
+  session: Session | null | undefined
   error: Error | null
   timedOut: boolean
 }
 
 export async function getSessionSnapshot(timeoutMs = 2500): Promise<SessionSnapshot> {
   const supabase = createClient()
+  let timeoutId: number | undefined
 
   const timeoutPromise = new Promise<SessionSnapshot>((resolve) => {
-    window.setTimeout(() => {
+    timeoutId = window.setTimeout(() => {
       resolve({
-        session: null,
+        session: undefined,
         error: null,
         timedOut: true,
       })
@@ -42,10 +43,16 @@ export async function getSessionSnapshot(timeoutMs = 2500): Promise<SessionSnaps
       timedOut: false,
     }))
     .catch((error: unknown) => ({
-      session: null,
+      session: undefined,
       error: error instanceof Error ? error : new Error(String(error)),
       timedOut: false,
     }))
 
-  return Promise.race([sessionPromise, timeoutPromise])
+  try {
+    return await Promise.race([sessionPromise, timeoutPromise])
+  } finally {
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId)
+    }
+  }
 }

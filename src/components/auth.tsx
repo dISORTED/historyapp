@@ -4,14 +4,28 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase-client'
 import Logo from './logo'
 
+type AuthMode = 'signin' | 'signup' | 'reset'
+
+function getAuthCallbackUrl(nextPath: string) {
+  const url = new URL('/auth/callback', window.location.origin)
+  url.searchParams.set('next', nextPath)
+  return url.toString()
+}
+
 export default function AuthComponent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const [mode, setMode] = useState<AuthMode>('signin')
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const goToMode = (nextMode: AuthMode) => {
+    setMode(nextMode)
+    setError(null)
+    setSuccessMessage(null)
+  }
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,23 +38,39 @@ export default function AuthComponent() {
 
       if (mode === 'signup') {
         if (!name.trim()) throw new Error('El nombre es obligatorio')
+
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { name },
+            data: { name: name.trim() },
+            emailRedirectTo: getAuthCallbackUrl('/signup-confirmed'),
           },
         })
+
         if (error) throw error
+
         setEmail('')
         setPassword('')
         setName('')
-        setSuccessMessage('¡Revisa tu correo para confirmar tu cuenta!')
-        setMode('signin')
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
+        setSuccessMessage('Revisa tu correo para confirmar tu cuenta.')
+        goToMode('signin')
+        return
       }
+
+      if (mode === 'reset') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: getAuthCallbackUrl('/reset-password'),
+        })
+
+        if (error) throw error
+
+        setSuccessMessage('Te enviamos un enlace para recuperar tu contraseña.')
+        return
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error de autenticación')
     } finally {
@@ -71,7 +101,7 @@ export default function AuthComponent() {
           letterSpacing: '-0.02em',
         }}
       >
-        {mode === 'signin' ? '¡Bienvenido de vuelta!' : 'Crear cuenta'}
+        {mode === 'signin' ? 'Bienvenido de vuelta' : mode === 'signup' ? 'Crear cuenta' : 'Recuperar contraseña'}
       </h2>
 
       <p
@@ -84,7 +114,9 @@ export default function AuthComponent() {
       >
         {mode === 'signin'
           ? 'Ingresa tus credenciales para continuar'
-          : 'Regístrate para comenzar a registrar incidencias'}
+          : mode === 'signup'
+            ? 'Regístrate para comenzar a registrar incidencias'
+            : 'Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña'}
       </p>
 
       <form onSubmit={handleAuth}>
@@ -101,7 +133,7 @@ export default function AuthComponent() {
           </div>
         )}
 
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: mode === 'reset' ? '24px' : '20px' }}>
           <label>Correo electrónico</label>
           <input
             type="email"
@@ -112,17 +144,19 @@ export default function AuthComponent() {
           />
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <label>Contraseña</label>
-          <input
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
-        </div>
+        {mode !== 'reset' && (
+          <div style={{ marginBottom: '20px' }}>
+            <label>Contraseña</label>
+            <input
+              type="password"
+              placeholder="********"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+          </div>
+        )}
 
         {error && (
           <div
@@ -138,7 +172,7 @@ export default function AuthComponent() {
               gap: '8px',
             }}
           >
-            <span>⚠</span> {error}
+            <span>!</span> {error}
           </div>
         )}
 
@@ -156,7 +190,7 @@ export default function AuthComponent() {
               gap: '8px',
             }}
           >
-            <span>✓</span> {successMessage}
+            <span>OK</span> {successMessage}
           </div>
         )}
 
@@ -183,10 +217,32 @@ export default function AuthComponent() {
             </>
           ) : mode === 'signin' ? (
             'Iniciar sesión'
-          ) : (
+          ) : mode === 'signup' ? (
             'Crear cuenta'
+          ) : (
+            'Enviar enlace'
           )}
         </button>
+
+        {mode === 'signin' && (
+          <div style={{ marginTop: '14px', textAlign: 'right' }}>
+            <button
+              type="button"
+              onClick={() => goToMode('reset')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--accent-primary)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '13px',
+                padding: 0,
+              }}
+            >
+              Olvidé mi contraseña
+            </button>
+          </div>
+        )}
 
         <div
           style={{
@@ -203,14 +259,14 @@ export default function AuthComponent() {
               margin: 0,
             }}
           >
-            {mode === 'signin' ? '¿No tienes cuenta?' : '¿Ya tienes una cuenta?'}
+            {mode === 'signin'
+              ? 'No tienes cuenta?'
+              : mode === 'signup'
+                ? 'Ya tienes una cuenta?'
+                : 'Recordaste tu contraseña?'}
             <button
               type="button"
-              onClick={() => {
-                setMode(mode === 'signin' ? 'signup' : 'signin')
-                setError(null)
-                setSuccessMessage(null)
-              }}
+              onClick={() => goToMode(mode === 'signin' ? 'signup' : 'signin')}
               style={{
                 background: 'none',
                 border: 'none',

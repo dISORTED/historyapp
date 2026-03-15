@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import type { User } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { createClient, getSessionSnapshot } from '@/lib/supabase-client'
 import IncidentForm from '@/components/incident-form'
@@ -13,7 +14,7 @@ import Logo from '@/components/logo'
 import { isPrimaryAdmin } from '@/lib/admin'
 
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
@@ -25,6 +26,7 @@ export default function Dashboard() {
 
   const lastUserIdRef = useRef<string | null>(null)
   const mountedRef = useRef(true)
+  const nameDirtyRef = useRef(false)
 
   useEffect(() => {
     mountedRef.current = true
@@ -33,41 +35,56 @@ export default function Dashboard() {
     }
   }, [])
 
+  useEffect(() => {
+    nameDirtyRef.current = nameDirty
+  }, [nameDirty])
+
+  const applyUserState = (nextUser: User | null) => {
+    if (!mountedRef.current) return
+
+    setUser(nextUser)
+
+    if (!nextUser) {
+      lastUserIdRef.current = null
+      nameDirtyRef.current = false
+      setTechName('')
+      setNameDirty(false)
+      return
+    }
+
+    const currentUserId = String(nextUser.id)
+    const existingName = nextUser.user_metadata?.name ? String(nextUser.user_metadata.name) : ''
+
+    if (lastUserIdRef.current !== currentUserId) {
+      lastUserIdRef.current = currentUserId
+      nameDirtyRef.current = false
+      setNameDirty(false)
+      setTechName(existingName)
+      return
+    }
+
+    if (existingName || !nameDirtyRef.current) {
+      setTechName(existingName)
+    }
+  }
+
   const loadSession = async () => {
     try {
       setAppError(null)
-      const supabase = createClient()
-      const { session, error } = await getSessionSnapshot()
-
-      if (error) {
-        await supabase.auth.signOut()
-      }
+      const { session, error, timedOut } = await getSessionSnapshot()
 
       if (!mountedRef.current) return
 
-      const current = session?.user || null
-      setUser(current)
-
-      if (!current) {
-        lastUserIdRef.current = null
-        setTechName('')
-        setNameDirty(false)
+      if (error) {
+        setAppError(error.message || 'No se pudo validar la sesión actual.')
         return
       }
 
-      const currentUserId = String(current.id)
-      const existingName = current?.user_metadata?.name ? String(current.user_metadata.name) : ''
-
-      if (lastUserIdRef.current !== currentUserId) {
-        lastUserIdRef.current = currentUserId
-        setNameDirty(false)
-        setTechName(existingName)
+      if (timedOut || session === undefined) {
         return
       }
 
-      if (existingName || !nameDirty) {
-        setTechName(existingName)
-      }
+      applyUserState(session?.user ?? null)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       const name = (e as any)?.name
@@ -79,13 +96,13 @@ export default function Dashboard() {
       if (!mountedRef.current) return
 
       setAppError(msg || 'Error inesperado cargando la sesión.')
-      setUser(null)
     }
   }
 
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
+    nameDirtyRef.current = false
     setUser(null)
     setTechName('')
     setNameDirty(false)
@@ -93,6 +110,28 @@ export default function Dashboard() {
 
   useEffect(() => {
     const supabase = createClient()
+
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mountedRef.current) return
+
+      if (
+        event === 'INITIAL_SESSION' ||
+        event === 'SIGNED_IN' ||
+        event === 'TOKEN_REFRESHED' ||
+        event === 'USER_UPDATED' ||
+        event === 'PASSWORD_RECOVERY'
+      ) {
+        setAppError(null)
+        applyUserState(session?.user ?? null)
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setAppError(null)
+        applyUserState(null)
+      }
+
+      setLoading(false)
+    })
 
     const init = async () => {
       try {
@@ -103,10 +142,6 @@ export default function Dashboard() {
     }
 
     init()
-
-    const { data } = supabase.auth.onAuthStateChange(async () => {
-      await loadSession()
-    })
 
     return () => data.subscription?.unsubscribe()
   }, [])
@@ -133,7 +168,9 @@ export default function Dashboard() {
       if (error) throw error
 
       setNameDirty(false)
-      await loadSession()
+      nameDirtyRef.current = false
+      setTechName(clean)
+      setUser((prev) => (prev ? { ...prev, user_metadata: { ...prev.user_metadata, name: clean } } : prev))
     } catch (err) {
       setNameError(err instanceof Error ? err.message : 'No se pudo guardar el nombre.')
     } finally {

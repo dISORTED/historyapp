@@ -2,26 +2,20 @@
 
 Aplicación web para registrar, consultar y analizar incidencias técnicas resueltas.
 
-Está construida con `Next.js 14`, `React 18`, `TypeScript` y `Supabase`, con enfoque en:
+Está construida con `Next.js 14`, `React 18`, `TypeScript` y `Supabase`, con foco en operación interna, trazabilidad y una experiencia clara para técnicos y administración.
 
-- registro rápido de tickets
-- historial claro para técnicos
-- panel admin con analítica básica
-- control de acceso con `Supabase Auth` y `RLS`
+## Qué incluye hoy
 
-## Qué hace hoy
-
-- Autenticación por correo y contraseña con Supabase
-- Registro de incidencias con código de ticket automático
-- Historial para usuarios comunes con búsqueda, filtros, orden y paginación
+- Autenticación con `Supabase Auth`
+- Registro de incidencias con `ticket_code` automático
+- Historial para usuarios con búsqueda, filtros, orden y paginación
 - Panel admin con KPIs, gráficos y vista global
-- Restricción de incidencias por usuario vía RLS
-- Acceso admin reservado al correo:
-  `sebastianecheverria2019@gmail.com`
+- Restricción por usuario mediante `RLS`
+- Acceso admin reservado al correo `sebastianecheverria2019@gmail.com`
 
 ## Stack
 
-- `Next.js 14` App Router
+- `Next.js 14` con App Router
 - `React 18`
 - `TypeScript`
 - `Supabase`
@@ -29,7 +23,7 @@ Está construida con `Next.js 14`, `React 18`, `TypeScript` y `Supabase`, con en
 - `react-datepicker`
 - `date-fns`
 
-## Estructura
+## Estructura del proyecto
 
 ```txt
 src/
@@ -42,6 +36,7 @@ src/
   components/
     admin-*.tsx
     auth.tsx
+    dashboard-side-panel.tsx
     incident-*.tsx
     incidents-chart.tsx
     live-clock.tsx
@@ -59,11 +54,66 @@ TESTING.md
 AGENTS.md
 ```
 
+## Arquitectura
+
+```mermaid
+flowchart TD
+  A["Frontend Next.js 14<br/>App Router + React 18"] --> B["Componentes UI<br/>Formularios, historial, gráficos, panel admin"]
+  B --> C["Lógica de dominio<br/>src/lib/incidents.ts<br/>src/lib/admin.ts"]
+  C --> D["Cliente Supabase<br/>Auth + Database + Session"]
+  D --> E["Supabase Auth<br/>Sesiones y usuarios"]
+  D --> F["Tabla public.incidents<br/>RLS + ticket_code + filtros"]
+```
+
+### Capas principales
+
+| Capa | Responsabilidad | Archivos clave |
+|---|---|---|
+| Presentación | Renderiza vistas, formularios, tablas, gráficos y panel admin | `src/app`, `src/components` |
+| Dominio | Centraliza consultas, creación de incidencias, filtros y control admin | `src/lib/incidents.ts`, `src/lib/admin.ts` |
+| Infraestructura | Maneja cliente Supabase, sesión y acceso a datos | `src/lib/supabase-client.ts` |
+| Persistencia | Guarda incidencias, usuarios autenticados y reglas RLS | `Supabase`, `scripts/schema.sql` |
+
+### Vista rápida por módulos
+
+```txt
++---------------------------+
+| Dashboard de usuario      |
+| - Formulario              |
+| - Historial               |
+| - Gráfico y reloj         |
++---------------------------+
+            |
+            v
++---------------------------+
+| Lógica compartida         |
+| - incidents.ts            |
+| - admin.ts                |
+| - types.ts                |
++---------------------------+
+            |
+            v
++---------------------------+
+| Supabase Client           |
+| - auth                    |
+| - session                 |
+| - queries                 |
++---------------------------+
+            |
+            v
++---------------------------+
+| Supabase                  |
+| - auth.users              |
+| - public.incidents        |
+| - RLS policies            |
++---------------------------+
+```
+
 ## Requisitos
 
 - `Node.js 18+`
-- proyecto Supabase creado
-- variables públicas de Supabase
+- Un proyecto de `Supabase`
+- Variables públicas de entorno para Supabase
 
 ## Variables de entorno
 
@@ -86,24 +136,28 @@ npm install
 npm run dev
 ```
 
-Si el entorno local queda en un estado raro, puedes limpiar `.next` y levantar otra vez:
+Si el entorno local queda en un estado extraño, puedes limpiar `.next` y volver a levantar:
 
 ```bash
 npm run dev:clean
 ```
 
-## Scripts
+## Scripts disponibles
 
 ```bash
 npm run dev
+npm run dev:clean
 npm run build
 npm start
 npm run type-check
+npm run lint
 ```
 
-Nota:
-- `npm run lint` existe en `package.json`, pero en este repo puede abrir el asistente interactivo de configuración de Next/ESLint si no está totalmente configurado.
-- No hay test runner automático configurado aún.
+Notas:
+
+- `npm run lint` puede abrir el asistente interactivo de configuración de Next/ESLint si el entorno no está totalmente inicializado.
+- `npm run setup-db` existe en `package.json`, pero actualmente depende de `scripts/setup-db.js`, que no está presente.
+- No hay un runner de tests automáticos configurado todavía.
 
 ## Base de datos
 
@@ -111,56 +165,57 @@ El SQL fuente de verdad está en:
 
 [`scripts/schema.sql`](./scripts/schema.sql)
 
-Ese archivo incluye:
+Ese archivo contiene:
 
-- tabla `public.incidents`
-- índices
-- políticas RLS
-- soporte para `ticket_code`
-- referencia para la policy admin por email
+- Tabla `public.incidents`
+- Índices
+- Políticas `RLS`
+- Soporte para `ticket_code`
+- Referencia para la policy admin por email
 
-## Tickets
+## Ticket automático
 
-Cada incidencia recibe un código automático al crearse, por ejemplo:
+Cada incidencia recibe un código de ticket automático al crearse. Ejemplo:
 
 ```txt
 TKT-20260313-104530-AB12
 ```
 
-Ese código se puede usar para buscar incidencias más rápido tanto en el historial normal como en el panel admin.
+Ese código puede usarse para buscar incidencias rápidamente tanto en el historial normal como en el panel admin.
 
 ## Seguridad
 
 ### RLS
 
-La tabla `incidents` usa políticas para que:
+La tabla `incidents` está pensada para que:
 
-- un usuario vea sus propios registros
-- un usuario cree, actualice y elimine solo sus registros
-- el admin definido pueda consultar el panorama global
+- Cada usuario vea solo sus propios registros
+- Cada usuario cree, edite o elimine solo sus propios registros
+- El admin autorizado pueda consultar el panorama global
 
 ### Admin
 
-El frontend y la política recomendada están alineados para permitir acceso admin solo a:
+El frontend y la policy recomendada están alineados para permitir acceso admin exclusivamente a:
 
 ```txt
 sebastianecheverria2019@gmail.com
 ```
 
-## Estado actual del proyecto
+## Estado funcional actual
 
 Actualmente el sistema incluye:
 
-- dashboard principal con formulario, gráfico, reloj y resumen lateral
-- historial de incidencias con paginación
-- detalle y edición de incidencias
-- panel admin con filtros, KPIs y gráficos
+- Dashboard principal con formulario de registro
+- Gráfico de incidencias por día
+- Reloj y panel lateral de resumen
+- Historial paginado con detalle de incidencias
+- Panel admin con filtros, KPIs y gráficos
 
-No incluye todavía:
+Actualmente no incluye:
 
-- suite automática de tests
-- backend custom con API routes
-- setup-db funcional por script (`npm run setup-db` sigue roto si falta `scripts/setup-db.js`)
+- Suite automática de tests
+- API routes personalizadas
+- Script funcional de bootstrap de base de datos con `npm run setup-db`
 
 ## Testing manual
 
@@ -170,46 +225,66 @@ La referencia oficial de pruebas manuales está en:
 
 Flujo recomendado:
 
-1. `npm run dev`
-2. abrir `http://localhost:3000`
-3. ejecutar uno o más escenarios de `TESTING.md`
-4. revisar consola del navegador y comportamiento real
+1. Ejecutar `npm run dev`
+2. Abrir `http://localhost:3000`
+3. Seguir uno o más escenarios de [`TESTING.md`](./TESTING.md)
+4. Revisar comportamiento visual, consola y errores de red
 
 ## Deploy en Vercel
 
-### 1. Validar localmente
+### 1. Validación local
 
 ```bash
 npm run type-check
 npm run build
 ```
 
-### 2. Configurar variables en Vercel
+### 2. Variables de entorno en Vercel
 
-Debes cargar:
+Debes configurar:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-### 3. Deploy
+### 3. Despliegue
 
-Importa el repositorio en Vercel y despliega normalmente.
+Importa el repositorio en Vercel y realiza el deploy normalmente.
 
-## Recomendaciones antes de testear en entorno
+## Recomendaciones antes de probar en entorno
 
-- limpiar incidencias y usuarios de prueba en Supabase
-- dejar solo la cuenta admin real
-- verificar la policy admin por email
-- probar login, creación, búsqueda, edición, eliminación y acceso admin
+- Limpiar incidencias y usuarios de prueba en Supabase
+- Dejar solo la cuenta admin real
+- Verificar la policy admin por email
+- Probar login, creación, búsqueda, edición, eliminación y acceso admin
 
-## Roadmap corto sugerido
+## Solución de problemas
 
-- corregir por completo textos con tildes rotas o mojibake restantes
-- unificar aún más el manejo de sesión
-- reducir consultas duplicadas del dashboard principal
-- agregar pruebas automáticas básicas
-- documentar migraciones SQL con más detalle
+### La app queda en "Cargando..." después de limpiar usuarios
+
+Si eliminaste usuarios directamente en Supabase, el navegador puede conservar una sesión local inválida.
+
+Prueba esto:
+
+1. Cerrar sesión si la interfaz lo permite
+2. Hacer recarga dura con `Ctrl + F5`
+3. Limpiar los datos del sitio para `localhost:3000`
+4. Volver a iniciar sesión
+
+### No aparece el admin
+
+Verifica que:
+
+- El correo autenticado sea `sebastianecheverria2019@gmail.com`
+- La metadata o policy SQL estén alineadas con ese correo
+- La sesión actual sea reciente y válida
+
+## Roadmap sugerido
+
+- Terminar de corregir textos con acentos dañados en toda la UI
+- Incorporar pruebas automáticas básicas
+- Documentar migraciones SQL con más detalle
+- Reducir consultas duplicadas del dashboard principal
 
 ## Licencia
 
-Uso interno / definir según necesidad del proyecto.
+Uso interno. Ajustar según la política del proyecto o la institución.
