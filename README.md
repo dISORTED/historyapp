@@ -11,7 +11,7 @@ Está construida con `Next.js 14`, `React 18`, `TypeScript` y `Supabase`, con fo
 - Historial para usuarios con búsqueda, filtros, orden y paginación
 - Panel admin con KPIs, gráficos y vista global
 - Restricción por usuario mediante `RLS`
-- Acceso admin reservado al correo `sebastianecheverria2019@gmail.com`
+- Acceso admin configurable mediante `NEXT_PUBLIC_PRIMARY_ADMIN_EMAIL`
 
 ## Stack
 
@@ -122,6 +122,7 @@ Crea un archivo `.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
+NEXT_PUBLIC_PRIMARY_ADMIN_EMAIL=admin@tu-dominio.com
 ```
 
 ## Instalación
@@ -198,8 +199,10 @@ La tabla `incidents` está pensada para que:
 El frontend y la policy recomendada están alineados para permitir acceso admin exclusivamente a:
 
 ```txt
-sebastianecheverria2019@gmail.com
+NEXT_PUBLIC_PRIMARY_ADMIN_EMAIL
 ```
+
+Importante: el valor de `NEXT_PUBLIC_PRIMARY_ADMIN_EMAIL` debe coincidir con el email permitido en la policy SQL de [`scripts/schema.sql`](./scripts/schema.sql).
 
 ## Estado funcional actual
 
@@ -245,6 +248,7 @@ Debes configurar:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_PRIMARY_ADMIN_EMAIL`
 
 ### 3. Despliegue
 
@@ -274,7 +278,7 @@ Prueba esto:
 
 Verifica que:
 
-- El correo autenticado sea `sebastianecheverria2019@gmail.com`
+- El correo autenticado coincida con `NEXT_PUBLIC_PRIMARY_ADMIN_EMAIL`
 - La metadata o policy SQL estén alineadas con ese correo
 - La sesión actual sea reciente y válida
 

@@ -8,23 +8,19 @@ import Logo from '@/components/logo'
 import AdminKpiCards from '@/components/admin-kpi-cards'
 import AdminTrendChart from '@/components/admin-trend-chart'
 import AdminBreakdownChart from '@/components/admin-breakdown-chart'
+import { parseStoredDate, toDateKey, toLocalDateValue, toSortableTimestamp } from '@/lib/date-utils'
 import { getAdminIncidents } from '@/lib/incidents'
 import { createClient, getSessionSnapshot } from '@/lib/supabase-client'
 import { AdminKpiMetrics, Incident } from '@/lib/types'
 import { isPrimaryAdmin, PRIMARY_ADMIN_EMAIL } from '@/lib/admin'
 
-function toDateKey(value: string | null | undefined): string {
-  if (!value) return ''
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toISOString().split('T')[0]
+function getTimelineValue(incident: Incident) {
+  return incident.attention_datetime || incident.resolution_date
 }
 
 function toHourLabel(value: string | null | undefined): string {
-  if (!value) return ''
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return ''
-  return `${String(d.getHours()).padStart(2, '0')}:00`
+  const parsed = parseStoredDate(value)
+  return parsed ? `${String(parsed.getHours()).padStart(2, '0')}:00` : ''
 }
 
 function toSearchableString(incident: Incident) {
@@ -76,7 +72,7 @@ export default function AdminPage() {
         const { session, error: sessionError, timedOut } = await getSessionSnapshot()
 
         if (sessionError) {
-          setError(sessionError.message || 'No se pudo cargar la sesión')
+          setError(sessionError.message || 'No se pudo cargar la sesion')
           return
         }
 
@@ -86,7 +82,7 @@ export default function AdminPage() {
 
         setUser(session?.user ?? null)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'No se pudo cargar la sesión')
+        setError(err instanceof Error ? err.message : 'No se pudo cargar la sesion')
       } finally {
         setLoadingSession(false)
       }
@@ -162,25 +158,15 @@ export default function AdminPage() {
 
   const incidents = useMemo(() => {
     const normalizedSearch = deferredSearchTerm.trim().toLowerCase()
+    const fromKey = dateFrom || ''
+    const toKey = dateTo || ''
 
     return allIncidents.filter((incident) => {
-      if (normalizedSearch && !toSearchableString(incident).includes(normalizedSearch)) {
-        return false
-      }
+      if (normalizedSearch && !toSearchableString(incident).includes(normalizedSearch)) return false
 
-      const resolutionTime = new Date(incident.resolution_date).getTime()
-      if (dateFrom) {
-        const from = new Date(dateFrom)
-        from.setHours(0, 0, 0, 0)
-        if (resolutionTime < from.getTime()) return false
-      }
-
-      if (dateTo) {
-        const to = new Date(dateTo)
-        to.setHours(23, 59, 59, 999)
-        if (resolutionTime > to.getTime()) return false
-      }
-
+      const timelineDateKey = toDateKey(getTimelineValue(incident))
+      if (fromKey && (!timelineDateKey || timelineDateKey < fromKey)) return false
+      if (toKey && (!timelineDateKey || timelineDateKey > toKey)) return false
       if (technician && incident.responsible !== technician) return false
       if (affectedTool && incident.affected_tool !== affectedTool) return false
 
@@ -193,8 +179,8 @@ export default function AdminPage() {
   }, [deferredSearchTerm, dateFrom, dateTo, technician, affectedTool])
 
   const metrics = useMemo<AdminKpiMetrics>(() => {
-    const todayKey = new Date().toISOString().split('T')[0]
-    const incidentsToday = incidents.filter((item) => toDateKey(item.resolution_date) === todayKey).length
+    const todayKey = toLocalDateValue(new Date())
+    const incidentsToday = incidents.filter((item) => toDateKey(getTimelineValue(item)) === todayKey).length
 
     const uniqueTechnicians = new Set(incidents.map((item) => item.responsible).filter(Boolean)).size
     const uniqueAffectedTools = new Set(incidents.map((item) => item.affected_tool).filter(Boolean)).size
@@ -221,13 +207,13 @@ export default function AdminPage() {
     const byDate: Record<string, number> = {}
 
     incidents.forEach((item) => {
-      const key = toDateKey(item.resolution_date)
+      const key = toDateKey(getTimelineValue(item))
       if (!key) return
       byDate[key] = (byDate[key] || 0) + 1
     })
 
     return Object.entries(byDate)
-      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+      .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([label, count]) => ({ label, count }))
   }, [incidents])
 
@@ -249,7 +235,7 @@ export default function AdminPage() {
     const byTech: Record<string, number> = {}
 
     incidents.forEach((item) => {
-      const key = item.responsible?.trim() || 'Sin técnico'
+      const key = item.responsible?.trim() || 'Sin tecnico'
       byTech[key] = (byTech[key] || 0) + 1
     })
 
@@ -262,8 +248,11 @@ export default function AdminPage() {
   const sortedIncidents = useMemo(() => {
     const copy = [...incidents]
     copy.sort((a, b) => {
-      const ta = new Date(a.attention_datetime || a.resolution_date).getTime()
-      const tb = new Date(b.attention_datetime || b.resolution_date).getTime()
+      const ta = toSortableTimestamp(getTimelineValue(a))
+      const tb = toSortableTimestamp(getTimelineValue(b))
+      if (ta === null && tb === null) return 0
+      if (ta === null) return 1
+      if (tb === null) return -1
       return tb - ta
     })
     return copy
@@ -272,9 +261,7 @@ export default function AdminPage() {
   const totalPages = Math.max(1, Math.ceil(sortedIncidents.length / pageSize))
 
   useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages)
-    }
+    if (currentPage > totalPages) setCurrentPage(totalPages)
   }, [currentPage, totalPages])
 
   const pageStart = (currentPage - 1) * pageSize
@@ -298,7 +285,7 @@ export default function AdminPage() {
 
   if (loadingSession) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ color: 'var(--text-secondary)' }}>Cargando panel admin...</p>
       </div>
     )
@@ -306,16 +293,7 @@ export default function AdminPage() {
 
   if (!user) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--bg-main)',
-          padding: '20px',
-        }}
-      >
+      <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
         <div style={{ width: '100%', maxWidth: '420px' }}>
           <AuthComponent />
         </div>
@@ -325,16 +303,7 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--bg-main)',
-          padding: '20px',
-        }}
-      >
+      <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
         <div className="card" style={{ maxWidth: '520px', width: '100%', textAlign: 'center' }}>
           <h2 style={{ marginTop: 0 }}>Acceso restringido</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '18px' }}>
@@ -349,52 +318,29 @@ export default function AdminPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-main)' }}>
-      <header
-        style={{
-          background:
-            'linear-gradient(90deg, rgba(19, 19, 26, 1) 0%, rgba(19, 19, 26, 0.92) 60%, rgba(10, 10, 15, 1) 100%)',
-          borderBottom: '1px solid var(--border-color)',
-          padding: '16px 24px',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          backdropFilter: 'blur(10px)',
-        }}
-      >
+    <div className="app-shell">
+      <header className="app-header">
         <div
           style={{
-            maxWidth: '1400px',
+            maxWidth: 'var(--container-max)',
             margin: '0 auto',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '16px',
             flexWrap: 'wrap',
+            padding: '14px 24px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <Logo />
-            <div style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '18px' }}>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  padding: '6px 10px',
-                  borderRadius: '999px',
-                  background: 'rgba(0, 166, 128, 0.12)',
-                  color: 'var(--accent-primary)',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
-                  marginBottom: '10px',
-                }}
-              >
+            <div style={{ borderLeft: '1px solid var(--border-light)', paddingLeft: '16px' }}>
+              <div className="badge badge-info" style={{ marginBottom: '10px' }}>
                 Centro de control
               </div>
-              <h1 style={{ margin: 0, fontSize: '24px', letterSpacing: '-0.03em' }}>Panel Admin</h1>
+              <h1 style={{ margin: 0, fontSize: '24px', letterSpacing: '-0.02em' }}>Panel Admin</h1>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                Vista global de incidencias, carga operativa y sistemas más afectados
+                Vista global de incidencias, carga operativa y sistemas mas afectados
               </p>
             </div>
           </div>
@@ -404,21 +350,14 @@ export default function AdminPage() {
               Ir al dashboard
             </Link>
             <button className="btn btn-secondary" onClick={handleSignOut}>
-              Cerrar sesión
+              Cerrar sesion
             </button>
           </div>
         </div>
       </header>
 
-      <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '28px 24px 32px' }}>
-        <section
-          className="card"
-          style={{
-            marginBottom: '20px',
-            background:
-              'radial-gradient(circle at top left, rgba(0, 166, 128, 0.12) 0%, transparent 32%), var(--bg-card)',
-          }}
-        >
+      <main className="app-main">
+        <section className="card" style={{ marginBottom: '20px' }}>
           <div
             style={{
               display: 'flex',
@@ -440,13 +379,11 @@ export default function AdminPage() {
                   fontWeight: 700,
                 }}
               >
-                Filtros de analítica
+                Filtros de analitica
               </p>
-              <h2 style={{ margin: '8px 0 0', fontSize: '22px', letterSpacing: '-0.03em' }}>
-                Ajusta el panorama operativo
-              </h2>
+              <h2 style={{ margin: '8px 0 0', fontSize: '22px', letterSpacing: '-0.02em' }}>Ajusta el panorama operativo</h2>
               <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                Cruza períodos, responsables y sistemas para detectar focos críticos.
+                Cruza periodos, responsables y sistemas para detectar focos criticos.
               </p>
             </div>
 
@@ -454,18 +391,14 @@ export default function AdminPage() {
               style={{
                 padding: '12px 14px',
                 borderRadius: 'var(--radius-lg)',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
-                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid var(--border-light)',
+                background: 'var(--bg-elevated)',
                 minWidth: '220px',
               }}
             >
-              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Registros en vista
-              </p>
-              <p style={{ margin: '6px 0 0', fontSize: '28px', fontWeight: 700 }}>{incidents.length}</p>
-              <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                Resultado del filtro activo
-              </p>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Registros en vista</p>
+              <p style={{ margin: '6px 0 0', fontSize: '28px', fontWeight: 800 }}>{incidents.length}</p>
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>Resultado del filtro activo</p>
             </div>
           </div>
 
@@ -482,7 +415,7 @@ export default function AdminPage() {
               <input
                 type="text"
                 value={searchTerm}
-                placeholder="Ticket, título, descripción, usuario, técnico..."
+                placeholder="Ticket, titulo, descripcion, usuario, tecnico..."
                 onChange={(event) => setSearchTerm(event.target.value)}
               />
             </div>
@@ -498,7 +431,7 @@ export default function AdminPage() {
             </div>
 
             <div>
-              <label>Técnico</label>
+              <label>Tecnico</label>
               <select value={technician} onChange={(event) => setTechnician(event.target.value)}>
                 <option value="">Todos</option>
                 {technicians.map((item) => (
@@ -528,14 +461,14 @@ export default function AdminPage() {
         </section>
 
         {error && (
-          <div className="card" style={{ marginBottom: '20px', borderColor: 'var(--color-error)' }}>
+          <div className="card" style={{ marginBottom: '20px', borderColor: '#f2c6ca', background: 'var(--color-error-bg)' }}>
             <p style={{ margin: 0, color: 'var(--color-error)' }}>{error}</p>
           </div>
         )}
 
         {loadingData ? (
           <div className="card" style={{ textAlign: 'center' }}>
-            <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Cargando analítica global...</p>
+            <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Cargando analitica global...</p>
           </div>
         ) : (
           <>
@@ -550,21 +483,13 @@ export default function AdminPage() {
               }}
             >
               <AdminTrendChart data={trendData} />
-              <AdminBreakdownChart
-                title="Sistemas más afectados"
-                subtitle="Top por volumen de incidencias"
-                data={bySystemData}
-              />
-              <AdminBreakdownChart
-                title="Técnicos con más casos"
-                subtitle="Participación por responsable"
-                data={byTechnicianData}
-              />
+              <AdminBreakdownChart title="Sistemas mas afectados" subtitle="Top por volumen de incidencias" data={bySystemData} />
+              <AdminBreakdownChart title="Tecnicos con mas casos" subtitle="Participacion por responsable" data={byTechnicianData} />
             </div>
 
             <div className="card" style={{ marginTop: '18px' }}>
               <div style={{ marginBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>Últimas incidencias del panorama</h3>
+                <h3 style={{ margin: 0, fontSize: '16px' }}>Ultimas incidencias del panorama</h3>
                 <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
                   Mostrando {shownFrom}-{shownTo} de {sortedIncidents.length} registros filtrados
                 </p>
@@ -577,16 +502,15 @@ export default function AdminPage() {
                       <th>Ticket</th>
                       <th>Fecha</th>
                       <th>Hora</th>
-                      <th>Título</th>
+                      <th>Titulo</th>
                       <th>Sistema</th>
-                      <th>Técnico</th>
+                      <th>Tecnico</th>
                       <th>Usuario</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedIncidents.map((incident) => {
-                      const parsedAttention = incident.attention_datetime ? new Date(incident.attention_datetime) : null
-
+                      const parsedAttention = parseStoredDate(incident.attention_datetime)
                       const hourLabel =
                         parsedAttention && !Number.isNaN(parsedAttention.getTime())
                           ? parsedAttention.toLocaleTimeString('es-CL', {
@@ -598,18 +522,7 @@ export default function AdminPage() {
                       return (
                         <tr key={incident.id}>
                           <td>
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '4px 10px',
-                                background: 'rgba(0, 166, 128, 0.15)',
-                                color: 'var(--accent-primary)',
-                                borderRadius: '999px',
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
+                            <span className="badge badge-info" style={{ whiteSpace: 'nowrap' }}>
                               {incident.ticket_code || incident.id.slice(0, 8).toUpperCase()}
                             </span>
                           </td>
@@ -623,30 +536,17 @@ export default function AdminPage() {
                                 fontSize: '13px',
                               }}
                             >
-                              {toDateKey(incident.attention_datetime || incident.resolution_date) || '-'}
+                              {toDateKey(getTimelineValue(incident)) || '-'}
                             </span>
                           </td>
                           <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{hourLabel}</td>
                           <td>
-                            <span style={{ fontWeight: 500 }}>{incident.title}</span>
+                            <span style={{ fontWeight: 700 }}>{incident.title}</span>
                           </td>
                           <td>
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '2px 8px',
-                                background: 'rgba(0, 166, 128, 0.15)',
-                                color: 'var(--accent-primary)',
-                                borderRadius: '20px',
-                                fontSize: '12px',
-                              }}
-                            >
-                              {incident.affected_tool}
-                            </span>
+                            <span className="badge badge-info">{incident.affected_tool}</span>
                           </td>
-                          <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
-                            {incident.responsible}
-                          </td>
+                          <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{incident.responsible}</td>
                           <td>{incident.attended_user || '-'}</td>
                         </tr>
                       )
@@ -666,7 +566,7 @@ export default function AdminPage() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label style={{ margin: 0 }}>Filas por página</label>
+                  <label style={{ margin: 0 }}>Filas por pagina</label>
                   <select
                     value={pageSize}
                     onChange={(event) => {
@@ -690,7 +590,7 @@ export default function AdminPage() {
                     Anterior
                   </button>
                   <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    Página {currentPage} de {totalPages}
+                    Pagina {currentPage} de {totalPages}
                   </span>
                   <button
                     className="btn btn-secondary"

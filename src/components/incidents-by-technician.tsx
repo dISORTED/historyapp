@@ -1,22 +1,29 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts'
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { getIncidentsByTechnician } from '@/lib/incidents'
 
 interface IncidentsByTechnicianProps {
   refreshTrigger: number
 }
 
+interface TechnicianPoint {
+  technician: string
+  count: number
+}
+
+interface PieLabelPayload {
+  cx: number
+  cy: number
+  midAngle: number
+  innerRadius: number
+  outerRadius: number
+  percent: number
+}
+
 export default function IncidentsByTechnician({ refreshTrigger }: IncidentsByTechnicianProps) {
-  const [data, setData] = useState<{technician: string, count: number}[]>([])
+  const [data, setData] = useState<TechnicianPoint[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -25,8 +32,8 @@ export default function IncidentsByTechnician({ refreshTrigger }: IncidentsByTec
       try {
         const techData = await getIncidentsByTechnician()
         setData(techData)
-      } catch (error) {
-        console.error('Error loading technician data:', error)
+      } catch {
+        setData([])
       } finally {
         setLoading(false)
       }
@@ -34,34 +41,16 @@ export default function IncidentsByTechnician({ refreshTrigger }: IncidentsByTec
     loadData()
   }, [refreshTrigger])
 
-  const colors = [
-    '#00a680',
-    '#00c49a',
-    '#00896a',
-    '#00b387',
-    '#00d4a3',
-    '#007a5c',
-  ]
-
+  const colors = ['#1f73b7', '#2f82c2', '#4a95d1', '#65a8df', '#81b9e9', '#9ccbf2']
   const RADIAN = Math.PI / 180
 
-  const renderCustomizedLabel = ({ 
-    cx, cy, midAngle, innerRadius, outerRadius, percent, name 
-  }: any) => {
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: PieLabelPayload) => {
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5
     const x = cx + radius * Math.cos(-midAngle * RADIAN)
     const y = cy + radius * Math.sin(-midAngle * RADIAN)
 
     return percent > 0.05 ? (
-      <text
-        x={x}
-        y={y}
-        fill="white"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontSize={12}
-        fontWeight={600}
-      >
+      <text x={x} y={y} fill="#0e3152" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700}>
         {`${(percent * 100).toFixed(0)}%`}
       </text>
     ) : null
@@ -79,8 +68,7 @@ export default function IncidentsByTechnician({ refreshTrigger }: IncidentsByTec
     return (
       <div className="card" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <div style={{ fontSize: '32px', marginBottom: '8px', opacity: 0.5 }}>👥</div>
-          <p>No hay datos de técnicos</p>
+          <p>No hay datos de tecnicos</p>
         </div>
       </div>
     )
@@ -88,13 +76,9 @@ export default function IncidentsByTechnician({ refreshTrigger }: IncidentsByTec
 
   return (
     <div className="card animate-fade-in">
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>
-          Incidencias por técnico
-        </h3>
-        <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Distribución de tickets por responsable
-        </p>
+      <div style={{ marginBottom: '18px' }}>
+        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>Incidencias por tecnico</h3>
+        <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>Distribucion de tickets por responsable</p>
       </div>
 
       <div style={{ height: '100%', width: '100%' }}>
@@ -112,25 +96,21 @@ export default function IncidentsByTechnician({ refreshTrigger }: IncidentsByTec
               labelLine={false}
             >
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                <Cell key={`${entry.technician}-${index}`} fill={colors[index % colors.length]} />
               ))}
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: 'var(--bg-elevated)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-md)',
+                backgroundColor: '#ffffff',
+                border: '1px solid #d8e2ed',
+                borderRadius: '12px',
                 boxShadow: 'var(--shadow-md)',
               }}
-              labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+              labelStyle={{ color: 'var(--text-primary)', fontWeight: 700 }}
               itemStyle={{ color: 'var(--text-primary)' }}
-              formatter={(value: any, name: any) => [value, `${name} - Tickets`]}
+              formatter={(value: number, name: string) => [value, `${name} - Tickets`]}
             />
-            <Legend 
-              formatter={(value) => <span style={{ color: 'var(--text-primary)' }}>{value}</span>}
-              iconType="circle"
-              iconSize={8}
-            />
+            <Legend formatter={(value) => <span style={{ color: 'var(--text-primary)' }}>{value}</span>} iconType="circle" iconSize={8} />
           </PieChart>
         </ResponsiveContainer>
       </div>

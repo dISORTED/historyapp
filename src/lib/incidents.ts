@@ -1,4 +1,5 @@
 import { createClient } from './supabase-client'
+import { buildLocalDayRange, toDateKey } from './date-utils'
 import { AdminIncidentFilters, CreateIncidentInput, Incident } from './types'
 
 function generateTicketCode() {
@@ -48,16 +49,23 @@ export async function createIncident(incident: CreateIncidentInput) {
 export async function getIncidents(searchTerm = '', dateFrom: string | null = null, dateTo: string | null = null) {
   const supabase = createClient()
 
-  let query = supabase.from('incidents').select('*').order('resolution_date', { ascending: false })
+  let query = supabase.from('incidents').select('*').order('attention_datetime', { ascending: false, nullsFirst: false })
 
   if (searchTerm) {
     query = query.or(
-      `ticket_code.ilike.%${searchTerm}%,title.ilike.%${searchTerm}%,problem_description.ilike.%${searchTerm}%,actions_taken.ilike.%${searchTerm}%,affected_tool.ilike.%${searchTerm}%,responsible.ilike.%${searchTerm}%`
+      `ticket_code.ilike.%${searchTerm}%,title.ilike.%${searchTerm}%,problem_description.ilike.%${searchTerm}%,actions_taken.ilike.%${searchTerm}%,affected_tool.ilike.%${searchTerm}%,responsible.ilike.%${searchTerm}%,attended_user.ilike.%${searchTerm}%`
     )
   }
 
-  if (dateFrom) query = query.gte('resolution_date', dateFrom)
-  if (dateTo) query = query.lte('resolution_date', dateTo)
+  if (dateFrom) {
+    const range = buildLocalDayRange(dateFrom)
+    if (range) query = query.gte('attention_datetime', range.startIso)
+  }
+
+  if (dateTo) {
+    const range = buildLocalDayRange(dateTo)
+    if (range) query = query.lte('attention_datetime', range.endIso)
+  }
 
   const { data, error } = await query
   if (error) throw error
@@ -104,7 +112,8 @@ export async function getIncidentsByDate(): Promise<IncidentByDate[]> {
 
   for (const incident of data || []) {
     if (incident.resolution_date) {
-      const date = incident.resolution_date.split('T')[0]
+      const date = toDateKey(incident.resolution_date)
+      if (!date) continue
       countByDate[date] = (countByDate[date] || 0) + 1
     }
   }
@@ -185,8 +194,16 @@ export async function getAdminIncidents(filters: AdminIncidentFilters = {}): Pro
     )
   }
 
-  if (filters.dateFrom) query = query.gte('resolution_date', filters.dateFrom)
-  if (filters.dateTo) query = query.lte('resolution_date', filters.dateTo)
+  if (filters.dateFrom) {
+    const range = buildLocalDayRange(filters.dateFrom)
+    if (range) query = query.gte('attention_datetime', range.startIso)
+  }
+
+  if (filters.dateTo) {
+    const range = buildLocalDayRange(filters.dateTo)
+    if (range) query = query.lte('attention_datetime', range.endIso)
+  }
+
   if (filters.technician) query = query.eq('responsible', filters.technician)
   if (filters.affectedTool) query = query.eq('affected_tool', filters.affectedTool)
 

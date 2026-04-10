@@ -76,7 +76,7 @@ export default function Dashboard() {
       if (!mountedRef.current) return
 
       if (error) {
-        setAppError(error.message || 'No se pudo validar la sesión actual.')
+        setAppError(error.message || 'No se pudo validar la sesion actual.')
         return
       }
 
@@ -87,15 +87,14 @@ export default function Dashboard() {
       applyUserState(session?.user ?? null)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
-      const name = (e as any)?.name
+      const name = (e as { name?: string })?.name
 
       if (name === 'AbortError' || /aborted/i.test(msg)) {
         return
       }
 
       if (!mountedRef.current) return
-
-      setAppError(msg || 'Error inesperado cargando la sesión.')
+      setAppError(msg || 'Error inesperado cargando la sesion.')
     }
   }
 
@@ -151,7 +150,7 @@ export default function Dashboard() {
 
     const clean = techName.trim()
     if (!clean) {
-      setNameError('Debes ingresar tu nombre de técnico.')
+      setNameError('Debes ingresar tu nombre de tecnico.')
       return
     }
     if (clean.length < 3) {
@@ -180,15 +179,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          background: 'var(--bg-main)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
+      <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
           <div
             style={{
@@ -201,7 +192,6 @@ export default function Dashboard() {
               margin: '0 auto 16px',
             }}
           />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           <p style={{ color: 'var(--text-secondary)' }}>Cargando...</p>
         </div>
       </div>
@@ -210,24 +200,13 @@ export default function Dashboard() {
 
   if (appError) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          background: 'var(--bg-main)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
-        }}
-      >
+      <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
         <div
+          className="card"
           style={{
             width: '100%',
             maxWidth: '480px',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--color-error)',
-            borderRadius: 'var(--radius-xl)',
-            padding: '32px',
+            borderColor: '#f2c6ca',
             textAlign: 'center',
           }}
         >
@@ -241,15 +220,14 @@ export default function Dashboard() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '28px',
+              fontSize: '24px',
+              color: 'var(--color-error)',
             }}
           >
-            ⚠
+            !
           </div>
-          <h2 style={{ marginTop: 0, marginBottom: '12px', fontSize: '20px' }}>Error de conexión</h2>
-          <p style={{ opacity: 0.8, fontSize: '14px', marginBottom: '24px', color: 'var(--text-secondary)' }}>
-            {appError}
-          </p>
+          <h2 style={{ marginTop: 0, marginBottom: '12px', fontSize: '20px' }}>Error de conexion</h2>
+          <p style={{ fontSize: '14px', marginBottom: '24px', color: 'var(--text-secondary)' }}>{appError}</p>
           <button onClick={() => location.reload()} className="btn btn-primary">
             Reintentar
           </button>
@@ -260,28 +238,8 @@ export default function Dashboard() {
 
   if (!user) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'var(--bg-main)',
-          padding: '20px',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'radial-gradient(ellipse at top, rgba(0, 166, 128, 0.1) 0%, transparent 60%)',
-            pointerEvents: 'none',
-          }}
-        />
-        <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '420px' }}>
+      <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ width: '100%', maxWidth: '460px' }}>
           <AuthComponent />
         </div>
       </div>
@@ -293,39 +251,18 @@ export default function Dashboard() {
 
   if (!technicianName) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          background: 'var(--bg-main)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
-        }}
-      >
-        <div
-          style={{
-            width: '100%',
-            maxWidth: '480px',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-xl)',
-            padding: '32px',
-            boxShadow: 'var(--shadow-lg)',
-          }}
-        >
+      <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div className="card" style={{ width: '100%', maxWidth: '520px', padding: '32px' }}>
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <Logo />
           </div>
 
-          <h2 style={{ marginTop: 0, marginBottom: '8px', fontSize: '22px', fontWeight: 700 }}>
-            ¡Bienvenido a STOTOMAS!
-          </h2>
+          <h2 style={{ marginTop: 0, marginBottom: '8px', fontSize: '22px', fontWeight: 800 }}>Bienvenido a STOTOMAS</h2>
           <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '28px' }}>
-            Para comenzar, ingresa tu nombre de técnico.
+            Para comenzar, ingresa tu nombre de tecnico.
           </p>
 
-          <label style={{ fontSize: '13px', marginBottom: '8px' }}>Nombre del técnico</label>
+          <label style={{ fontSize: '13px', marginBottom: '8px' }}>Nombre del tecnico</label>
           <input
             type="text"
             value={techName}
@@ -333,7 +270,7 @@ export default function Dashboard() {
               setTechName(e.target.value)
               setNameDirty(true)
             }}
-            placeholder="Ej: Sebastián Echeverría"
+            placeholder="Ej: Sebastian Echeverria"
             style={{ width: '100%', padding: '14px 16px', fontSize: '15px' }}
             autoFocus
           />
@@ -344,12 +281,13 @@ export default function Dashboard() {
                 color: 'var(--color-error)',
                 marginTop: '12px',
                 fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid #f2c6ca',
+                background: 'var(--color-error-bg)',
               }}
             >
-              <span>⚠</span> {nameError}
+              {nameError}
             </div>
           )}
 
@@ -370,7 +308,7 @@ export default function Dashboard() {
             className="btn btn-secondary"
             style={{ width: '100%', marginTop: '12px' }}
           >
-            Cerrar sesión
+            Cerrar sesion
           </button>
         </div>
       </div>
@@ -378,63 +316,56 @@ export default function Dashboard() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-main)' }}>
-      <header
-        style={{
-          background: 'var(--bg-card)',
-          padding: '16px 24px',
-          borderBottom: '1px solid var(--border-color)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-        }}
-      >
+    <div className="app-shell">
+      <header className="app-header">
         <div
           style={{
-            maxWidth: '1400px',
+            maxWidth: 'var(--container-max)',
             margin: '0 auto',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            gap: '14px',
+            flexWrap: 'wrap',
+            padding: '14px 24px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <Logo />
-            <div style={{ paddingLeft: '20px', borderLeft: '1px solid var(--border-color)' }}>
-              <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 600, letterSpacing: '-0.01em' }}>
-                Historial de Incidencias
-              </h1>
+            <div style={{ paddingLeft: '16px', borderLeft: '1px solid var(--border-light)' }}>
+              <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 800, letterSpacing: '-0.01em' }}>Historial de Incidencias</h1>
               <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                Registro de soluciones técnicas
+                Registro de soluciones tecnicas
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {isAdmin && (
               <Link href="/admin" className="btn btn-secondary" style={{ textDecoration: 'none', padding: '8px 14px' }}>
                 Panel admin
               </Link>
             )}
             <button onClick={handleSignOut} className="btn btn-secondary" style={{ padding: '8px 14px' }}>
-              Cerrar sesión
+              Cerrar sesion
             </button>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ margin: 0, fontWeight: 500 }}>{technicianName}</p>
+            <div style={{ textAlign: 'right', marginLeft: '6px' }}>
+              <p style={{ margin: 0, fontWeight: 700 }}>{technicianName}</p>
               <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>{user.email}</p>
             </div>
             <div
               style={{
-                width: '40px',
-                height: '40px',
+                width: '36px',
+                height: '36px',
                 borderRadius: '50%',
-                background: 'var(--accent-gradient)',
+                background: 'var(--accent-soft)',
+                border: '1px solid #c7ddf2',
+                color: 'var(--accent-primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: 600,
-                fontSize: '16px',
-                boxShadow: 'var(--shadow-glow)',
+                fontWeight: 800,
+                fontSize: '15px',
               }}
             >
               {technicianName.charAt(0).toUpperCase()}
@@ -443,19 +374,13 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main
-        style={{
-          maxWidth: '1400px',
-          margin: '0 auto',
-          padding: '32px 24px',
-        }}
-      >
+      <main className="app-main">
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'minmax(0, 1.25fr) minmax(340px, 0.95fr)',
             gap: '24px',
-            marginBottom: '32px',
+            marginBottom: '24px',
             alignItems: 'start',
           }}
           className="animate-fade-in dashboard-top-grid"
@@ -480,6 +405,7 @@ export default function Dashboard() {
             <DashboardSidePanel refreshTrigger={refreshTrigger} />
           </div>
         </div>
+
         <div className="animate-fade-in" style={{ animationDelay: '100ms' }}>
           <IncidentList refreshTrigger={refreshTrigger} />
         </div>

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase-client'
+import { fromDateTimeLocalInputValue, parseStoredDate, toDateTimeLocalInputValue } from '@/lib/date-utils'
 import { Incident } from '@/lib/types'
 import { deleteIncident, updateIncident } from '@/lib/incidents'
 import { CreateIncidentInput } from '@/lib/types'
@@ -12,6 +13,19 @@ interface IncidentDetailProps {
   onUpdate: () => void
 }
 
+function createInitialFormData(incident: Incident): Partial<CreateIncidentInput> {
+  return {
+    resolution_date: incident.resolution_date,
+    attention_datetime: incident.attention_datetime || '',
+    attended_user: incident.attended_user || '',
+    title: incident.title,
+    problem_description: incident.problem_description,
+    actions_taken: incident.actions_taken,
+    affected_tool: incident.affected_tool,
+    observations: incident.observations,
+  }
+}
+
 export default function IncidentDetail({ incident, onClose, onUpdate }: IncidentDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -19,6 +33,14 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
+  const [formData, setFormData] = useState<Partial<CreateIncidentInput>>(() => createInitialFormData(incident))
+
+  useEffect(() => {
+    setFormData(createInitialFormData(incident))
+    setIsEditing(false)
+    setShowDeleteConfirm(false)
+    setError(null)
+  }, [incident])
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -29,25 +51,14 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
         } = await supabase.auth.getSession()
 
         const user = session?.user
-        if (user) {
-          setIsOwner(user.user_metadata?.name === incident.responsible)
-        }
+        if (user) setIsOwner(user.id === incident.user_id)
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         if (/abort/i.test(message)) return
       }
     }
     fetchUser()
-  }, [incident.responsible])
-
-  const [formData, setFormData] = useState<Partial<CreateIncidentInput>>({
-    resolution_date: incident.resolution_date,
-    title: incident.title,
-    problem_description: incident.problem_description,
-    actions_taken: incident.actions_taken,
-    affected_tool: incident.affected_tool,
-    observations: incident.observations,
-  })
+  }, [incident.user_id])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -59,6 +70,9 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
     setIsSaving(true)
 
     try {
+      if (!formData.attention_datetime) throw new Error('Falta la fecha y hora de atencion.')
+      if (!formData.attended_user?.trim()) throw new Error('Falta el usuario atendido.')
+
       await updateIncident(incident.id, formData)
       setIsEditing(false)
       onUpdate()
@@ -92,24 +106,24 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0,0,0,0.7)',
+        background: 'rgba(16, 34, 58, 0.42)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
         padding: '20px',
-        backdropFilter: 'blur(4px)',
+        backdropFilter: 'blur(2px)',
       }}
       onClick={onClose}
     >
       <div
         style={{
           background: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
+          border: '1px solid var(--border-light)',
           borderRadius: 'var(--radius-xl)',
-          padding: '28px',
-          maxWidth: '640px',
-          maxHeight: '85vh',
+          padding: '26px',
+          maxWidth: '700px',
+          maxHeight: '88vh',
           overflowY: 'auto',
           boxShadow: 'var(--shadow-lg)',
           width: '100%',
@@ -122,44 +136,25 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '24px',
-            paddingBottom: '20px',
+            marginBottom: '20px',
+            paddingBottom: '16px',
             borderBottom: '1px solid var(--border-light)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--accent-gradient)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                boxShadow: 'var(--shadow-glow)',
-              }}
-            >
-              📋
-            </div>
-            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>
-              {isEditing ? 'Editar incidencia' : 'Detalles de incidencia'}
+          <div>
+            <p style={{ margin: 0 }} className="badge badge-info">
+              Detalle de incidencia
+            </p>
+            <h2 style={{ margin: '10px 0 0', fontSize: '20px', fontWeight: 800 }}>
+              {isEditing ? 'Editar incidencia' : 'Revision del caso'}
             </h2>
           </div>
           <button
             onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: 'var(--text-secondary)',
-              padding: '4px',
-              lineHeight: 1,
-            }}
+            className="btn btn-secondary"
+            style={{ width: '36px', height: '36px', padding: 0, borderRadius: '50%' }}
           >
-            ✕
+            X
           </button>
         </div>
 
@@ -169,44 +164,60 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '20px',
+                gap: '18px',
                 marginBottom: '20px',
               }}
             >
               <div>
-                <label>Fecha de resolución</label>
+                <label>Fecha de resolucion</label>
                 <input type="date" name="resolution_date" value={formData.resolution_date} onChange={handleChange} />
+              </div>
+
+              <div>
+                <label>Fecha y hora de atencion</label>
+                <input
+                  type="datetime-local"
+                  value={toDateTimeLocalInputValue(formData.attention_datetime)}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, attention_datetime: fromDateTimeLocalInputValue(e.target.value) }))
+                  }
+                />
               </div>
 
               <div>
                 <label>Responsable</label>
                 <input type="text" value={incident.responsible} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
               </div>
+
+              <div>
+                <label>Usuario atendido</label>
+                <input type="text" name="attended_user" value={formData.attended_user} onChange={handleChange} />
+              </div>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label>Título</label>
+            <div style={{ marginBottom: '18px' }}>
+              <label>Titulo</label>
               <input type="text" name="title" value={formData.title} onChange={handleChange} />
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '18px' }}>
               <label>Sistema afectado</label>
               <input type="text" name="affected_tool" value={formData.affected_tool} onChange={handleChange} />
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label>Descripción del problema</label>
+            <div style={{ marginBottom: '18px' }}>
+              <label>Descripcion del problema</label>
               <textarea name="problem_description" value={formData.problem_description} onChange={handleChange} rows={4} />
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '18px' }}>
               <label>Acciones realizadas</label>
               <textarea name="actions_taken" value={formData.actions_taken} onChange={handleChange} rows={4} />
             </div>
 
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '22px' }}>
               <label>Observaciones</label>
-              <textarea name="observations" value={formData.observations} onChange={handleChange} rows={2} />
+              <textarea name="observations" value={formData.observations} onChange={handleChange} rows={3} />
             </div>
 
             {error && (
@@ -218,16 +229,14 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
                   padding: '12px',
                   background: 'var(--color-error-bg)',
                   borderRadius: 'var(--radius-md)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
+                  border: '1px solid #f2c6ca',
                 }}
               >
-                <span>⚠</span> {error}
+                {error}
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button onClick={() => setIsEditing(false)} className="btn btn-secondary">
                 Cancelar
               </button>
@@ -242,49 +251,56 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: '16px',
-                marginBottom: '24px',
+                gap: '12px',
+                marginBottom: '20px',
               }}
             >
-              <div style={{ padding: '16px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)' }}>
-                <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Ticket
-                </p>
-                <p style={{ margin: 0, fontWeight: 500 }}>{incident.ticket_code || incident.id.slice(0, 8).toUpperCase()}</p>
+              <div className="card" style={{ padding: '14px', background: 'var(--bg-elevated)', boxShadow: 'none' }}>
+                <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Ticket</p>
+                <p style={{ margin: 0, fontWeight: 700 }}>{incident.ticket_code || incident.id.slice(0, 8).toUpperCase()}</p>
               </div>
-
-              <div style={{ padding: '16px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)' }}>
-                <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Fecha
+              <div className="card" style={{ padding: '14px', background: 'var(--bg-elevated)', boxShadow: 'none' }}>
+                <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Fecha</p>
+                <p style={{ margin: 0, fontWeight: 700 }}>
+                  {parseStoredDate(incident.attention_datetime || incident.resolution_date)?.toLocaleDateString('es-CL') || '-'}
                 </p>
-                <p style={{ margin: 0, fontWeight: 500 }}>{new Date(incident.resolution_date).toLocaleDateString('es-CL')}</p>
               </div>
-
-              <div style={{ padding: '16px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)' }}>
-                <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Sistema
+              <div className="card" style={{ padding: '14px', background: 'var(--bg-elevated)', boxShadow: 'none' }}>
+                <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Hora</p>
+                <p style={{ margin: 0, fontWeight: 700 }}>
+                  {incident.attention_datetime
+                    ? parseStoredDate(incident.attention_datetime)?.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) ||
+                      '-'
+                    : '-'}
                 </p>
-                <p style={{ margin: 0, fontWeight: 500 }}>{incident.affected_tool}</p>
               </div>
-
-              <div style={{ padding: '16px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)' }}>
-                <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Responsable
+              <div className="card" style={{ padding: '14px', background: 'var(--bg-elevated)', boxShadow: 'none' }}>
+                <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Sistema</p>
+                <p style={{ margin: 0, fontWeight: 700 }}>{incident.affected_tool}</p>
+              </div>
+              <div className="card" style={{ padding: '14px', background: 'var(--bg-elevated)', boxShadow: 'none' }}>
+                <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Responsable</p>
+                <p style={{ margin: 0, fontWeight: 700 }}>{incident.responsible}</p>
+              </div>
+              <div className="card" style={{ padding: '14px', background: 'var(--bg-elevated)', boxShadow: 'none' }}>
+                <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                  Usuario atendido
                 </p>
-                <p style={{ margin: 0, fontWeight: 500 }}>{incident.responsible}</p>
+                <p style={{ margin: 0, fontWeight: 700 }}>{incident.attended_user || '-'}</p>
               </div>
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: 600 }}>{incident.title}</h3>
             </div>
 
             <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 800 }}>{incident.title}</h3>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
               <label>Problema</label>
               <div
                 style={{
-                  padding: '16px',
+                  padding: '14px',
                   background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-light)',
                   borderRadius: 'var(--radius-md)',
                   fontSize: '14px',
                   whiteSpace: 'pre-wrap',
@@ -295,12 +311,13 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
               </div>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <label>Acciones realizadas</label>
               <div
                 style={{
-                  padding: '16px',
+                  padding: '14px',
                   background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-light)',
                   borderRadius: 'var(--radius-md)',
                   fontSize: '14px',
                   whiteSpace: 'pre-wrap',
@@ -312,12 +329,13 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
             </div>
 
             {incident.observations && (
-              <div style={{ marginBottom: '24px' }}>
+              <div style={{ marginBottom: '20px' }}>
                 <label>Observaciones</label>
                 <div
                   style={{
-                    padding: '16px',
+                    padding: '14px',
                     background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-light)',
                     borderRadius: 'var(--radius-md)',
                     fontSize: '14px',
                     whiteSpace: 'pre-wrap',
@@ -338,34 +356,32 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
                   padding: '12px',
                   background: 'var(--color-error-bg)',
                   borderRadius: 'var(--radius-md)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
+                  border: '1px solid #f2c6ca',
                 }}
               >
-                <span>⚠</span> {error}
+                {error}
               </div>
             )}
 
             {showDeleteConfirm ? (
               <div
                 style={{
-                  padding: '20px',
+                  padding: '18px',
                   background: 'var(--color-error-bg)',
                   borderRadius: 'var(--radius-lg)',
-                  border: '1px solid var(--color-error)',
-                  marginBottom: '20px',
+                  border: '1px solid #f2c6ca',
+                  marginBottom: '16px',
                 }}
               >
-                <p style={{ margin: '0 0 16px', fontSize: '14px', textAlign: 'center' }}>
-                  ¿Estás seguro de que deseas eliminar esta incidencia? Esta acción no se puede deshacer.
+                <p style={{ margin: '0 0 14px', fontSize: '14px', textAlign: 'center' }}>
+                  Esta accion eliminara la incidencia de forma permanente.
                 </p>
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                   <button onClick={() => setShowDeleteConfirm(false)} className="btn btn-secondary">
                     Cancelar
                   </button>
                   <button onClick={handleDelete} disabled={isDeleting} className="btn btn-danger">
-                    {isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
+                    {isDeleting ? 'Eliminando...' : 'Si, eliminar'}
                   </button>
                 </div>
               </div>
@@ -374,22 +390,19 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
                 {!isOwner && (
                   <div
                     style={{
-                      padding: '12px 16px',
+                      padding: '12px 14px',
                       background: 'var(--bg-elevated)',
                       borderRadius: 'var(--radius-md)',
-                      marginBottom: '20px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
+                      border: '1px solid var(--border-light)',
+                      marginBottom: '16px',
                       color: 'var(--text-secondary)',
                       fontSize: '13px',
                     }}
                   >
-                    <span>ℹ️</span>
-                    Solo {incident.responsible} puede editar esta incidencia
+                    Solo el propietario original puede editar esta incidencia.
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                   <button onClick={() => setShowDeleteConfirm(true)} className="btn btn-danger" disabled={!isOwner}>
                     Eliminar
                   </button>

@@ -65,14 +65,14 @@ export default function AuthComponent() {
 
         if (error) throw error
 
-        setSuccessMessage('Te enviamos un enlace para recuperar tu contraseña.')
+        setSuccessMessage('Te enviamos un enlace para recuperar tu contrasena.')
         return
       }
 
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de autenticación')
+      setError(err instanceof Error ? err.message : 'Error de autenticacion')
     } finally {
       setLoading(false)
     }
@@ -82,13 +82,13 @@ export default function AuthComponent() {
     <div
       className="card animate-fade-in"
       style={{
-        maxWidth: '420px',
+        maxWidth: '440px',
         margin: '0 auto',
-        padding: '40px 32px',
-        boxShadow: 'var(--shadow-lg)',
+        padding: '36px 32px',
+        boxShadow: 'var(--shadow-md)',
       }}
     >
-      <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+      <div style={{ marginBottom: '28px', textAlign: 'center' }}>
         <Logo />
       </div>
 
@@ -96,12 +96,12 @@ export default function AuthComponent() {
         style={{
           textAlign: 'center',
           fontSize: '24px',
-          fontWeight: 700,
+          fontWeight: 800,
           marginBottom: '8px',
           letterSpacing: '-0.02em',
         }}
       >
-        {mode === 'signin' ? 'Bienvenido de vuelta' : mode === 'signup' ? 'Crear cuenta' : 'Recuperar contraseña'}
+        {mode === 'signin' ? 'Bienvenido de vuelta' : mode === 'signup' ? 'Crear cuenta' : 'Recuperar contrasena'}
       </h2>
 
       <p
@@ -115,17 +115,17 @@ export default function AuthComponent() {
         {mode === 'signin'
           ? 'Ingresa tus credenciales para continuar'
           : mode === 'signup'
-            ? 'Regístrate para comenzar a registrar incidencias'
-            : 'Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña'}
+            ? 'Crea tu acceso para registrar incidencias'
+            : 'Te enviaremos un enlace para restablecer tu acceso'}
       </p>
 
       <form onSubmit={handleAuth}>
         {mode === 'signup' && (
-          <div style={{ marginBottom: '20px' }}>
-            <label>Nombre del técnico</label>
+          <div style={{ marginBottom: '18px' }}>
+            <label>Nombre del tecnico</label>
             <input
               type="text"
-              placeholder="Ej: Juan Pérez"
+              placeholder="Ej: Juan Perez"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -133,8 +133,8 @@ export default function AuthComponent() {
           </div>
         )}
 
-        <div style={{ marginBottom: mode === 'reset' ? '24px' : '20px' }}>
-          <label>Correo electrónico</label>
+        <div style={{ marginBottom: mode === 'reset' ? '22px' : '18px' }}>
+          <label>Correo electronico</label>
           <input
             type="email"
             placeholder="correo@ejemplo.com"
@@ -145,8 +145,8 @@ export default function AuthComponent() {
         </div>
 
         {mode !== 'reset' && (
-          <div style={{ marginBottom: '20px' }}>
-            <label>Contraseña</label>
+          <div style={{ marginBottom: '18px' }}>
+            <label>Contrasena</label>
             <input
               type="password"
               placeholder="********"
@@ -162,17 +162,15 @@ export default function AuthComponent() {
           <div
             style={{
               color: 'var(--color-error)',
-              marginBottom: '20px',
+              marginBottom: '18px',
               fontSize: '13px',
               padding: '12px',
               background: 'var(--color-error-bg)',
               borderRadius: 'var(--radius-md)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
+              border: '1px solid #f2c6ca',
             }}
           >
-            <span>!</span> {error}
+            {error}
           </div>
         )}
 
@@ -180,17 +178,15 @@ export default function AuthComponent() {
           <div
             style={{
               color: 'var(--color-success)',
-              marginBottom: '20px',
+              marginBottom: '18px',
               fontSize: '13px',
               padding: '12px',
               background: 'var(--color-success-bg)',
               borderRadius: 'var(--radius-md)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
+              border: '1px solid #bde7d7',
             }}
           >
-            <span>OK</span> {successMessage}
+            {successMessage}
           </div>
         )}
 
@@ -198,7 +194,7 @@ export default function AuthComponent() {
           type="submit"
           disabled={loading}
           className="btn btn-primary"
-          style={{ width: '100%', padding: '14px', fontSize: '15px' }}
+          style={{ width: '100%', padding: '13px', fontSize: '15px' }}
         >
           {loading ? (
             <>
@@ -212,11 +208,10 @@ export default function AuthComponent() {
                   animation: 'spin 1s linear infinite',
                 }}
               />
-              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
               Procesando...
             </>
           ) : mode === 'signin' ? (
-            'Iniciar sesión'
+            'Iniciar sesion'
           ) : mode === 'signup' ? (
             'Crear cuenta'
           ) : (
@@ -234,12 +229,12 @@ export default function AuthComponent() {
                 border: 'none',
                 color: 'var(--accent-primary)',
                 cursor: 'pointer',
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: '13px',
                 padding: 0,
               }}
             >
-              Olvidé mi contraseña
+              Olvide mi contrasena
             </button>
           </div>
         )}
@@ -252,18 +247,8 @@ export default function AuthComponent() {
             borderTop: '1px solid var(--border-light)',
           }}
         >
-          <p
-            style={{
-              color: 'var(--text-secondary)',
-              fontSize: '14px',
-              margin: 0,
-            }}
-          >
-            {mode === 'signin'
-              ? 'No tienes cuenta?'
-              : mode === 'signup'
-                ? 'Ya tienes una cuenta?'
-                : 'Recordaste tu contraseña?'}
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>
+            {mode === 'signin' ? 'No tienes cuenta?' : mode === 'signup' ? 'Ya tienes cuenta?' : 'Recordaste tu clave?'}
             <button
               type="button"
               onClick={() => goToMode(mode === 'signin' ? 'signup' : 'signin')}
@@ -272,13 +257,13 @@ export default function AuthComponent() {
                 border: 'none',
                 color: 'var(--accent-primary)',
                 cursor: 'pointer',
-                fontWeight: 600,
+                fontWeight: 700,
                 marginLeft: '6px',
                 fontSize: '14px',
                 padding: 0,
               }}
             >
-              {mode === 'signin' ? 'Regístrate' : 'Inicia sesión'}
+              {mode === 'signin' ? 'Registrate' : 'Inicia sesion'}
             </button>
           </p>
         </div>

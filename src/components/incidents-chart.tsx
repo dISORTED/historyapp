@@ -1,17 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Area,
-  AreaChart,
-} from 'recharts'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { IncidentByDate, getIncidentsByDate } from '@/lib/incidents'
 
 interface IncidentsChartProps {
@@ -28,8 +18,8 @@ export default function IncidentsChart({ refreshTrigger }: IncidentsChartProps) 
       try {
         const incidentsData = await getIncidentsByDate()
         setData(incidentsData)
-      } catch (error) {
-        console.error('Error loading chart data:', error)
+      } catch {
+        setData([])
       } finally {
         setLoading(false)
       }
@@ -45,7 +35,7 @@ export default function IncidentsChart({ refreshTrigger }: IncidentsChartProps) 
   if (loading) {
     return (
       <div className="card" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: 'var(--text-secondary)' }}>Cargando gráfico...</div>
+        <div style={{ color: 'var(--text-secondary)' }}>Cargando grafico...</div>
       </div>
     )
   }
@@ -54,75 +44,53 @@ export default function IncidentsChart({ refreshTrigger }: IncidentsChartProps) 
     return (
       <div className="card" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <div style={{ fontSize: '32px', marginBottom: '8px', opacity: 0.5 }}>📊</div>
-          <p>No hay datos suficientes para mostrar el gráfico</p>
+          <p>No hay datos suficientes para mostrar el grafico</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div
-      className="card animate-fade-in"
-      style={{
-        minHeight: '320px',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}
-    >
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>
-          Incidencias por día
-        </h3>
-        <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Cantidad de registros por fecha de resolución
-        </p>
+    <div className="card animate-fade-in" style={{ minHeight: '320px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ marginBottom: '16px' }}>
+        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>Incidencias por dia</h3>
+        <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>Cantidad de registros por fecha de resolucion</p>
       </div>
 
-      <div
-        style={{
-          width: '100%',
-          height: '240px',
-          marginTop: 'auto',
-        }}
-      >
+      <div style={{ width: '100%', height: '240px', marginTop: 'auto' }}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 15, left: 0, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 12, left: -4, bottom: 0 }}>
             <defs>
-              <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#00a680" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#00a680" stopOpacity={0} />
+              <linearGradient id="incidentsArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#1f73b7" stopOpacity={0.28} />
+                <stop offset="95%" stopColor="#1f73b7" stopOpacity={0.04} />
               </linearGradient>
             </defs>
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke="var(--border-light)" 
-              vertical={false}
-            />
-            <XAxis 
-              dataKey="date" 
+            <CartesianGrid strokeDasharray="3 3" stroke="#dde7f1" vertical={false} />
+            <XAxis
+              dataKey="date"
               tickFormatter={formatDate}
-              stroke="var(--text-muted)"
-              tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-              axisLine={{ stroke: 'var(--border-color)' }}
+              stroke="#7d90a7"
+              tick={{ fill: '#4a607a', fontSize: 12 }}
+              axisLine={{ stroke: '#cdd9e6' }}
               tickLine={false}
             />
-            <YAxis 
-              stroke="var(--text-muted)"
-              tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+            <YAxis
+              stroke="#7d90a7"
+              tick={{ fill: '#4a607a', fontSize: 12 }}
               axisLine={false}
               tickLine={false}
               allowDecimals={false}
+              width={32}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'var(--bg-elevated)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-md)',
+                backgroundColor: '#ffffff',
+                border: '1px solid #d8e2ed',
+                borderRadius: '12px',
                 boxShadow: 'var(--shadow-md)',
               }}
-              labelStyle={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: '4px' }}
+              labelStyle={{ color: 'var(--text-primary)', fontWeight: 700, marginBottom: '4px' }}
               itemStyle={{ color: 'var(--accent-primary)' }}
               labelFormatter={(value) => {
                 const date = new Date(value)
@@ -132,12 +100,12 @@ export default function IncidentsChart({ refreshTrigger }: IncidentsChartProps) 
             <Area
               type="monotone"
               dataKey="count"
-              stroke="#00a680"
-              strokeWidth={2}
+              stroke="#1f73b7"
+              strokeWidth={2.5}
               fillOpacity={1}
-              fill="url(#colorGradient)"
-              dot={{ fill: '#00a680', strokeWidth: 0, r: 4 }}
-              activeDot={{ fill: '#00c49a', strokeWidth: 0, r: 6 }}
+              fill="url(#incidentsArea)"
+              dot={{ fill: '#1f73b7', strokeWidth: 0, r: 4 }}
+              activeDot={{ fill: '#14548c', strokeWidth: 0, r: 6 }}
             />
           </AreaChart>
         </ResponsiveContainer>

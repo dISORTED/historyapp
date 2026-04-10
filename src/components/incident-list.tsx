@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { es } from 'date-fns/locale'
+import { parseStoredDate, toDateKey, toLocalDateValue, toSortableTimestamp } from '@/lib/date-utils'
 import { Incident } from '@/lib/types'
 import { getIncidents } from '@/lib/incidents'
 import IncidentDetail from './incident-detail'
@@ -14,24 +15,18 @@ interface IncidentListProps {
 
 type SortDir = 'desc' | 'asc'
 
-function toTime(value: string | null | undefined): number | null {
-  if (!value) return null
-  const t = new Date(value).getTime()
-  return Number.isFinite(t) ? t : null
+function getTimelineValue(incident: Incident) {
+  return incident.attention_datetime || incident.resolution_date
 }
 
 function formatDate(value: string | null | undefined) {
-  if (!value) return '-'
-  const d = new Date(value)
-  if (isNaN(d.getTime())) return '-'
-  return d.toLocaleDateString('es-CL')
+  const parsed = parseStoredDate(value)
+  return parsed ? parsed.toLocaleDateString('es-CL') : '-'
 }
 
 function formatTime(value: string | null | undefined) {
-  if (!value) return '-'
-  const d = new Date(value)
-  if (isNaN(d.getTime())) return '-'
-  return d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+  const parsed = parseStoredDate(value)
+  return parsed ? parsed.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : '-'
 }
 
 function toSearchableString(incident: Incident) {
@@ -85,24 +80,15 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
 
   const filteredIncidents = useMemo(() => {
     const normalizedSearch = deferredSearchTerm.trim().toLowerCase()
+    const fromKey = dateFrom ? toLocalDateValue(dateFrom) : ''
+    const toKey = dateTo ? toLocalDateValue(dateTo) : ''
 
     return allIncidents.filter((incident) => {
-      if (normalizedSearch && !toSearchableString(incident).includes(normalizedSearch)) {
-        return false
-      }
+      if (normalizedSearch && !toSearchableString(incident).includes(normalizedSearch)) return false
 
-      const resolutionTime = new Date(incident.resolution_date).getTime()
-      if (dateFrom) {
-        const from = new Date(dateFrom)
-        from.setHours(0, 0, 0, 0)
-        if (resolutionTime < from.getTime()) return false
-      }
-
-      if (dateTo) {
-        const to = new Date(dateTo)
-        to.setHours(23, 59, 59, 999)
-        if (resolutionTime > to.getTime()) return false
-      }
+      const timelineDateKey = toDateKey(getTimelineValue(incident))
+      if (fromKey && (!timelineDateKey || timelineDateKey < fromKey)) return false
+      if (toKey && (!timelineDateKey || timelineDateKey > toKey)) return false
 
       return true
     })
@@ -111,8 +97,8 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
   const orderedIncidents = useMemo(() => {
     const copy = [...filteredIncidents]
     copy.sort((a, b) => {
-      const ta = toTime(a.attention_datetime)
-      const tb = toTime(b.attention_datetime)
+      const ta = toSortableTimestamp(getTimelineValue(a))
+      const tb = toSortableTimestamp(getTimelineValue(b))
 
       if (ta === null && tb === null) return 0
       if (ta === null) return 1
@@ -130,9 +116,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
   const totalPages = Math.max(1, Math.ceil(orderedIncidents.length / pageSize))
 
   useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages)
-    }
+    if (currentPage > totalPages) setCurrentPage(totalPages)
   }, [currentPage, totalPages])
 
   const pageStart = (currentPage - 1) * pageSize
@@ -155,28 +139,31 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '24px',
+          marginBottom: '18px',
           flexWrap: 'wrap',
-          gap: '16px',
+          gap: '14px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div
             style={{
-              width: '40px',
-              height: '40px',
+              width: '38px',
+              height: '38px',
               borderRadius: 'var(--radius-md)',
-              background: 'var(--bg-elevated)',
+              background: 'var(--accent-soft)',
+              border: '1px solid #c7ddf2',
+              color: 'var(--accent-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '18px',
+              fontSize: '16px',
+              fontWeight: 700,
             }}
           >
-            📋
+            H
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Historial de incidencias</h2>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Historial de incidencias</h2>
             <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
               {orderedIncidents.length} registro{orderedIncidents.length !== 1 ? 's' : ''} encontrado
               {orderedIncidents.length !== 1 ? 's' : ''}
@@ -189,16 +176,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           className="btn btn-secondary"
           style={{ fontSize: '13px' }}
         >
-          <span
-            style={{
-              transform: sortDir === 'desc' ? 'rotate(180deg)' : 'rotate(0deg)',
-              display: 'inline-block',
-              transition: 'transform var(--transition-fast)',
-            }}
-          >
-            ↑
-          </span>
-          {sortDir === 'desc' ? 'Más recientes' : 'Más antiguos'}
+          {sortDir === 'desc' ? 'Mas recientes' : 'Mas antiguos'}
         </button>
       </div>
 
@@ -207,17 +185,18 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '16px',
-          marginBottom: '24px',
-          padding: '20px',
+          marginBottom: '22px',
+          padding: '16px',
           background: 'var(--bg-elevated)',
           borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border-light)',
         }}
       >
         <div>
           <label>Buscar</label>
           <input
             type="text"
-            placeholder="Ticket, título, sistema, responsable..."
+            placeholder="Ticket, titulo, sistema, responsable..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -261,7 +240,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
       </div>
 
       {loading ? (
-        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+        <div style={{ padding: '52px', textAlign: 'center', color: 'var(--text-secondary)' }}>
           <div
             style={{
               width: '32px',
@@ -273,44 +252,29 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
               margin: '0 auto 12px',
             }}
           />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           <p>Cargando incidencias...</p>
         </div>
       ) : listError ? (
         <div
           style={{
-            padding: '24px',
+            padding: '22px',
             textAlign: 'center',
             background: 'var(--color-error-bg)',
             borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--color-error)',
+            border: '1px solid #f2c6ca',
           }}
         >
-          <p
-            style={{
-              margin: 0,
-              color: 'var(--color-error)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-            }}
-          >
-            <span>⚠</span> {listError}
-          </p>
+          <p style={{ margin: 0, color: 'var(--color-error)' }}>{listError}</p>
           <button onClick={loadIncidents} className="btn btn-secondary" style={{ marginTop: '16px' }}>
             Reintentar
           </button>
         </div>
       ) : orderedIncidents.length === 0 ? (
-        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>📭</div>
+        <div style={{ padding: '52px', textAlign: 'center', color: 'var(--text-secondary)' }}>
           <p style={{ fontSize: '16px', marginBottom: '8px' }}>
             {hasFilters ? 'No se encontraron resultados' : 'No hay incidencias registradas'}
           </p>
-          <p style={{ fontSize: '13px', opacity: 0.7 }}>
-            {hasFilters ? 'Intenta con otros filtros' : 'Crea tu primera incidencia arriba'}
-          </p>
+          <p style={{ fontSize: '13px', opacity: 0.75 }}>{hasFilters ? 'Intenta con otros filtros' : 'Crea tu primera incidencia arriba'}</p>
         </div>
       ) : (
         <>
@@ -321,17 +285,17 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%' }}>
               <thead>
                 <tr>
                   <th>Ticket</th>
                   <th>Fecha</th>
                   <th>Hora</th>
                   <th>Usuario</th>
-                  <th>Título</th>
+                  <th>Titulo</th>
                   <th>Sistema</th>
                   <th>Responsable</th>
-                  <th></th>
+                  <th />
                 </tr>
               </thead>
 
@@ -339,18 +303,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
                 {paginatedIncidents.map((incident) => (
                   <tr key={incident.id}>
                     <td>
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '4px 10px',
-                          background: 'rgba(0, 166, 128, 0.15)',
-                          color: 'var(--accent-primary)',
-                          borderRadius: '999px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
+                      <span className="badge badge-info" style={{ whiteSpace: 'nowrap' }}>
                         {incident.ticket_code || incident.id.slice(0, 8).toUpperCase()}
                       </span>
                     </td>
@@ -364,29 +317,18 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
                           fontSize: '13px',
                         }}
                       >
-                        {formatDate(incident.attention_datetime)}
+                        {formatDate(getTimelineValue(incident))}
                       </span>
                     </td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
-                      {formatTime(incident.attention_datetime)}
+                      {incident.attention_datetime ? formatTime(incident.attention_datetime) : '-'}
                     </td>
                     <td>{incident.attended_user || '-'}</td>
                     <td>
-                      <span style={{ fontWeight: 500 }}>{incident.title}</span>
+                      <span style={{ fontWeight: 700 }}>{incident.title}</span>
                     </td>
                     <td>
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          background: 'rgba(0, 166, 128, 0.15)',
-                          color: 'var(--accent-primary)',
-                          borderRadius: '20px',
-                          fontSize: '12px',
-                        }}
-                      >
-                        {incident.affected_tool}
-                      </span>
+                      <span className="badge badge-info">{incident.affected_tool}</span>
                     </td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{incident.responsible}</td>
                     <td>
@@ -415,7 +357,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label style={{ margin: 0 }}>Filas por página</label>
+              <label style={{ margin: 0 }}>Filas por pagina</label>
               <select
                 value={pageSize}
                 onChange={(event) => {
@@ -439,7 +381,7 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
                 Anterior
               </button>
               <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                Página {currentPage} de {totalPages}
+                Pagina {currentPage} de {totalPages}
               </span>
               <button
                 className="btn btn-secondary"

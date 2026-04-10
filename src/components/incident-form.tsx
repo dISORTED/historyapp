@@ -5,6 +5,7 @@ import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import { es } from 'date-fns/locale'
 import { createIncident } from '@/lib/incidents'
+import { parseStoredDate, toLocalDateValue } from '@/lib/date-utils'
 import { CreateIncidentInput } from '@/lib/types'
 import { createClient } from '@/lib/supabase-client'
 
@@ -14,7 +15,7 @@ interface IncidentFormProps {
 
 function createInitialFormData(responsible = ''): CreateIncidentInput {
   return {
-    resolution_date: new Date().toISOString().split('T')[0],
+    resolution_date: toLocalDateValue(new Date()),
     attention_datetime: new Date().toISOString(),
     attended_user: '',
     title: '',
@@ -42,14 +43,10 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
         } = await supabase.auth.getSession()
 
         const user = session?.user
-
         if (user?.user_metadata?.name) {
           const responsible = String(user.user_metadata.name)
           setUserName(responsible)
-          setFormData((prev) => ({
-            ...prev,
-            responsible,
-          }))
+          setFormData((prev) => ({ ...prev, responsible }))
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -66,7 +63,7 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
   }
 
   const handleResolutionDateChange = (date: Date | null) => {
-    const dateString = date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    const dateString = toLocalDateValue(date || new Date())
     setFormData((prev) => ({ ...prev, resolution_date: dateString }))
   }
 
@@ -88,15 +85,13 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
     setLoading(true)
 
     try {
-      if (!formData.attention_datetime) throw new Error('Falta la hora de atención.')
+      if (!formData.attention_datetime) throw new Error('Falta la hora de atencion.')
       if (!formData.attended_user.trim()) throw new Error('Falta el usuario atendido.')
 
       await createIncident(formData)
-
       setFormData(createInitialFormData(userName))
       setSuccess(true)
       onSuccess()
-
       window.setTimeout(() => setSuccess(false), 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear el registro')
@@ -106,62 +101,45 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
   }
 
   return (
-    <div
-      className="card"
-      style={{
-        background: 'linear-gradient(180deg, rgba(0, 166, 128, 0.06) 0%, rgba(19, 19, 26, 1) 24%)',
-      }}
-    >
+    <div className="card">
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingBottom: '20px',
+          paddingBottom: '18px',
           borderBottom: '1px solid var(--border-light)',
-          marginBottom: '20px',
+          marginBottom: '18px',
           gap: '16px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div
             style={{
-              width: '40px',
-              height: '40px',
+              width: '38px',
+              height: '38px',
               borderRadius: 'var(--radius-md)',
-              background: 'var(--accent-gradient)',
+              background: 'var(--accent-soft)',
+              border: '1px solid #c7ddf2',
+              color: 'var(--accent-primary)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '20px',
-              boxShadow: 'var(--shadow-glow)',
+              fontSize: '18px',
+              fontWeight: 700,
             }}
           >
-            +
+            N
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Nuevo registro</h2>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Nuevo registro</h2>
             <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
               Registrar una nueva incidencia
             </p>
           </div>
         </div>
 
-        <div
-          style={{
-            padding: '8px 10px',
-            borderRadius: '999px',
-            background: 'rgba(0, 166, 128, 0.12)',
-            color: 'var(--accent-primary)',
-            fontSize: '12px',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Formulario activo
-        </div>
+        <div className="badge badge-info">Formulario activo</div>
       </div>
 
       <form onSubmit={handleSubmit} className="animate-fade-in">
@@ -176,7 +154,7 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
           <div>
             <label>Fecha de cierre</label>
             <DatePicker
-              selected={new Date(formData.resolution_date)}
+              selected={parseStoredDate(formData.resolution_date)}
               onChange={handleResolutionDateChange}
               dateFormat="yyyy-MM-dd"
               locale={es}
@@ -186,14 +164,19 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
           </div>
 
           <div>
-            <label>Técnico asignado</label>
-            <input type="text" value={formData.responsible} disabled style={{ cursor: 'not-allowed', opacity: 0.7, fontWeight: 600 }} />
+            <label>Tecnico asignado</label>
+            <input
+              type="text"
+              value={formData.responsible}
+              disabled
+              style={{ cursor: 'not-allowed', opacity: 0.7, fontWeight: 700 }}
+            />
           </div>
 
           <div>
-            <label>Fecha y hora de atención *</label>
+            <label>Fecha y hora de atencion *</label>
             <DatePicker
-              selected={new Date(formData.attention_datetime)}
+              selected={parseStoredDate(formData.attention_datetime)}
               onChange={handleAttentionDateTimeChange}
               dateFormat="yyyy-MM-dd HH:mm"
               locale={es}
@@ -220,7 +203,7 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <label>Título breve *</label>
+          <label>Titulo breve *</label>
           <input type="text" name="title" placeholder="Resumen del problema" value={formData.title} onChange={handleChange} required />
         </div>
 
@@ -237,10 +220,10 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
         </div>
 
         <div style={{ marginBottom: '20px' }}>
-          <label>Descripción del problema *</label>
+          <label>Descripcion del problema *</label>
           <textarea
             name="problem_description"
-            placeholder="¿Cuál fue el problema?"
+            placeholder="Cual fue el problema?"
             value={formData.problem_description}
             onChange={handleChange}
             required
@@ -267,8 +250,8 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
             placeholder="Notas adicionales o recomendaciones"
             value={formData.observations}
             onChange={handleChange}
-            rows={7}
-            style={{ minHeight: '232px' }}
+            rows={6}
+            style={{ minHeight: '210px' }}
           />
         </div>
 
@@ -281,12 +264,10 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
               padding: '12px',
               background: 'var(--color-error-bg)',
               borderRadius: 'var(--radius-md)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
+              border: '1px solid #f2c6ca',
             }}
           >
-            <span>⚠</span> {error}
+            {error}
           </div>
         )}
 
@@ -299,12 +280,10 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
               padding: '12px',
               background: 'var(--color-success-bg)',
               borderRadius: 'var(--radius-md)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
+              border: '1px solid #bde7d7',
             }}
           >
-            <span>✓</span> Incidencia registrada correctamente
+            Incidencia registrada correctamente
           </div>
         )}
 
