@@ -3,17 +3,20 @@
 import { useEffect, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import Link from 'next/link'
-import { createClient, getSessionSnapshot } from '@/lib/supabase-client'
-import IncidentForm from '@/components/incident-form'
 import AuthComponent from '@/components/auth'
 import Logo from '@/components/logo'
 import AppShell from '@/components/app-shell'
+import IncidentsChart from '@/components/incidents-chart'
+import DashboardSidePanel from '@/components/dashboard-side-panel'
+import { createClient, getSessionSnapshot } from '@/lib/supabase-client'
 import { isPrimaryAdmin } from '@/lib/admin'
 
-export default function Dashboard() {
+export default function AnaliticaPage() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [appError, setAppError] = useState<string | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
   const [techName, setTechName] = useState('')
   const [savingName, setSavingName] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
@@ -69,22 +72,18 @@ export default function Dashboard() {
       const { session, error, timedOut } = await getSessionSnapshot()
 
       if (!mountedRef.current) return
-
       if (error) {
         setAppError(error.message || 'No se pudo validar la sesion actual.')
         return
       }
-
       if (timedOut || session === undefined) return
 
       applyUserState(session?.user ?? null)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       const name = (e as { name?: string })?.name
-
       if (name === 'AbortError' || /aborted/i.test(msg)) return
       if (!mountedRef.current) return
-
       setAppError(msg || 'Error inesperado cargando la sesion.')
     }
   }
@@ -263,34 +262,39 @@ export default function Dashboard() {
 
   return (
     <AppShell
-      section="dashboard"
-      title="Dashboard operativo"
-      subtitle="Registro y seguimiento diario de atenciones tecnicas"
+      section="analytics"
+      title="Analitica"
+      subtitle="Indicadores operativos, tendencia y resumen rapido de incidencias"
       userName={technicianName}
       userEmail={user.email || ''}
       onSignOut={handleSignOut}
       showAdminLink={isAdmin}
       topActions={
         <>
-          <Link href="/analitica" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
-            Ver analitica
+          <Link href="/" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+            Volver a Dashboard
           </Link>
-          {isAdmin && (
-            <Link href="/admin" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
-              Ver panel admin
-            </Link>
-          )}
-          <span className="badge badge-info">Formato ticket: TK-0001</span>
+          <button className="btn btn-secondary" onClick={() => setRefreshTrigger((prev) => prev + 1)}>
+            Actualizar analitica
+          </button>
         </>
       }
     >
       <div
         style={{
-          maxWidth: '900px',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.25fr) minmax(340px, 0.95fr)',
+          gap: '24px',
+          alignItems: 'start',
         }}
-        className="animate-fade-in"
+        className="animate-fade-in dashboard-top-grid"
       >
-        <IncidentForm onSuccess={() => {}} />
+        <div style={{ minHeight: '320px' }}>
+          <IncidentsChart refreshTrigger={refreshTrigger} />
+        </div>
+        <div>
+          <DashboardSidePanel refreshTrigger={refreshTrigger} />
+        </div>
       </div>
     </AppShell>
   )

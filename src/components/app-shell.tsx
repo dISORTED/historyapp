@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import Logo from './logo'
+import TopbarClock from './topbar-clock'
 
-type ShellSection = 'dashboard' | 'history' | 'admin'
+type ShellSection = 'dashboard' | 'history' | 'analytics' | 'admin'
 
 interface AppShellProps {
   section: ShellSection
@@ -31,6 +32,7 @@ export default function AppShell({
 }: AppShellProps) {
   const isDashboard = section === 'dashboard'
   const isHistory = section === 'history'
+  const isAnalytics = section === 'analytics'
   const isAdmin = section === 'admin'
 
   return (
@@ -46,6 +48,9 @@ export default function AppShell({
           </Link>
           <Link href="/historial" className={`app-nav-link ${isHistory ? 'active' : ''}`}>
             Historial
+          </Link>
+          <Link href="/analitica" className={`app-nav-link ${isAnalytics ? 'active' : ''}`}>
+            Analitica
           </Link>
           {showAdminLink && (
             <Link href="/admin" className={`app-nav-link ${isAdmin ? 'active' : ''}`}>
@@ -69,7 +74,10 @@ export default function AppShell({
             <h1 className="app-topbar-title">{title}</h1>
             <p className="app-topbar-subtitle">{subtitle}</p>
           </div>
-          <div className="app-topbar-actions">{topActions}</div>
+          <div className="app-topbar-actions">
+            <TopbarClock />
+            {topActions}
+          </div>
         </header>
 
         <main className="app-main">{children}</main>
