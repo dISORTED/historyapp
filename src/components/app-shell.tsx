@@ -40,7 +40,7 @@ export default function AppShell({
   const isHistory = section === 'history'
   const isAnalytics = section === 'analytics'
   const isAdmin = section === 'admin'
-  const quickLinks: QuickLink[] = [
+  const userQuickLinks: QuickLink[] = [
     {
       label: 'Recuperar contrasena',
       href: 'https://recuperatuclave.santotomas.cl/',
@@ -90,6 +90,58 @@ export default function AppShell({
       ),
     },
   ]
+  const connectivityQuickLinks: QuickLink[] = [
+    {
+      label: 'IMC cable sede',
+      href: 'https://imc.santotomas.cl/imc/dndfront/dnd.jsfc',
+      icon: (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M8 4a2 2 0 0 0-2 2v3h2V6h8v3h2V6a2 2 0 0 0-2-2H8Zm3 4h2v3h3a2 2 0 0 1 2 2v3h2v2h-2v2h-2v-2H8v2H6v-2H4v-2h2v-3a2 2 0 0 1 2-2h3V8Zm-3 5v3h8v-3H8Z"
+          />
+        </svg>
+      ),
+    },
+    {
+      label: 'Wifi APs y mapeo',
+      href: 'https://192.168.130.166/',
+      icon: (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M12 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0-4a7.96 7.96 0 0 1 5.66 2.34l-1.42 1.42A5.97 5.97 0 0 0 12 16c-1.66 0-3.16.67-4.24 1.76l-1.42-1.42A7.96 7.96 0 0 1 12 14Zm0-4a11.95 11.95 0 0 1 8.49 3.51l-1.42 1.42A9.97 9.97 0 0 0 12 12c-2.76 0-5.26 1.12-7.07 2.93l-1.42-1.42A11.95 11.95 0 0 1 12 10Zm0-4c4.42 0 8.42 1.79 11.31 4.69l-1.42 1.42A13.94 13.94 0 0 0 12 6c-3.87 0-7.37 1.57-9.89 4.11L.69 8.69A15.93 15.93 0 0 1 12 4Z"
+          />
+        </svg>
+      ),
+    },
+  ]
+  const arandaQuickLinks: QuickLink[] = [
+    {
+      label: 'Creacion de ticket',
+      href: 'https://mesadeayuda.santotomas.cl/USDKV8//#/home/start',
+      icon: (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5.5a2.5 2.5 0 0 0 0 5V21H4V5Zm2 0v14h12v-2.38a2.5 2.5 0 0 1 0-4.24V5H6Zm5 3h2v2h2v2h-2v2h-2v-2H9v-2h2V8Z"
+          />
+        </svg>
+      ),
+    },
+    {
+      label: 'Monitoreo de ticket',
+      href: 'https://mesadeayuda.santotomas.cl/ASDKV8/Main/Pages/Cases.aspx#/Dashboard',
+      icon: (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M4 4h16v2H4V4Zm0 4h10v2H4V8Zm0 4h10v2H4v-2Zm0 4h10v2H4v-2Zm12.5-1a4.5 4.5 0 1 0 2.92 7.93l2.82 2.82 1.41-1.41-2.82-2.82A4.5 4.5 0 0 0 16.5 15Zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z"
+          />
+        </svg>
+      ),
+    },
+  ]
 
   return (
     <div className="app-shell app-shell-layout">
@@ -118,7 +170,7 @@ export default function AppShell({
         <section className="app-sidebar-support" aria-label="Gestion Usuarios">
           <p className="app-sidebar-support-title">Gestion Usuarios</p>
           <div className="app-sidebar-support-links">
-            {quickLinks.map((quickLink) => (
+            {userQuickLinks.map((quickLink) => (
               <a
                 key={quickLink.label}
                 href={quickLink.href}
@@ -132,6 +184,44 @@ export default function AppShell({
             ))}
           </div>
           <p className="app-sidebar-support-note">Nota: el cambio de clave puede tardar hasta 2 horas en reflejarse.</p>
+        </section>
+
+        <section className="app-sidebar-support" aria-label="IMC y Conectividad">
+          <p className="app-sidebar-support-title">IMC y Conectividad</p>
+          <div className="app-sidebar-support-links">
+            {connectivityQuickLinks.map((quickLink) => (
+              <a
+                key={quickLink.label}
+                href={quickLink.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="app-support-link"
+              >
+                <span className="app-support-link-icon">{quickLink.icon}</span>
+                <span>{quickLink.label}</span>
+              </a>
+            ))}
+          </div>
+          <p className="app-sidebar-support-note">Acceso rapido para monitoreo de cableado e infraestructura WiFi.</p>
+        </section>
+
+        <section className="app-sidebar-support" aria-label="Aranda">
+          <p className="app-sidebar-support-title">Aranda</p>
+          <div className="app-sidebar-support-links">
+            {arandaQuickLinks.map((quickLink) => (
+              <a
+                key={quickLink.label}
+                href={quickLink.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="app-support-link"
+              >
+                <span className="app-support-link-icon">{quickLink.icon}</span>
+                <span>{quickLink.label}</span>
+              </a>
+            ))}
+          </div>
+          <p className="app-sidebar-support-note">Acceso rapido para crear y monitorear tickets en Aranda.</p>
         </section>
 
         <div className="app-sidebar-user">
