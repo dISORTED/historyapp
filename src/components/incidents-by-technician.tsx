@@ -119,7 +119,10 @@ export default function IncidentsByTechnician({ refreshTrigger }: IncidentsByTec
               }}
               labelStyle={{ color: 'var(--text-primary)', fontWeight: 700 }}
               itemStyle={{ color: 'var(--text-primary)' }}
-              formatter={(value: number, name: string) => [value, `${name} - Tickets`]}
+              formatter={(value, name) => {
+                const displayValue = Array.isArray(value) ? value.join(', ') : value ?? 0
+                return [displayValue, `${String(name)} - Tickets`]
+              }}
             />
             <Legend formatter={(value) => <span style={{ color: 'var(--text-primary)' }}>{value}</span>} iconType="circle" iconSize={8} />
           </PieChart>
