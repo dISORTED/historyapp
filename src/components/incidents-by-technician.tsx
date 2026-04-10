@@ -13,15 +13,6 @@ interface TechnicianPoint {
   count: number
 }
 
-interface PieLabelPayload {
-  cx: number
-  cy: number
-  midAngle: number
-  innerRadius: number
-  outerRadius: number
-  percent: number
-}
-
 export default function IncidentsByTechnician({ refreshTrigger }: IncidentsByTechnicianProps) {
   const [data, setData] = useState<TechnicianPoint[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,16 +35,36 @@ export default function IncidentsByTechnician({ refreshTrigger }: IncidentsByTec
   const colors = ['#1f73b7', '#2f82c2', '#4a95d1', '#65a8df', '#81b9e9', '#9ccbf2']
   const RADIAN = Math.PI / 180
 
-  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: PieLabelPayload) => {
+  const renderCustomizedLabel = (props: unknown) => {
+    if (!props || typeof props !== 'object') return null
+
+    const candidate = props as {
+      cx?: number
+      cy?: number
+      midAngle?: number
+      innerRadius?: number
+      outerRadius?: number
+      percent?: number
+    }
+
+    const cx = candidate.cx ?? 0
+    const cy = candidate.cy ?? 0
+    const midAngle = candidate.midAngle ?? 0
+    const innerRadius = candidate.innerRadius ?? 0
+    const outerRadius = candidate.outerRadius ?? 0
+    const percent = candidate.percent ?? 0
+
+    if (percent <= 0.05) return null
+
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5
     const x = cx + radius * Math.cos(-midAngle * RADIAN)
     const y = cy + radius * Math.sin(-midAngle * RADIAN)
 
-    return percent > 0.05 ? (
+    return (
       <text x={x} y={y} fill="#0e3152" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={700}>
         {`${(percent * 100).toFixed(0)}%`}
       </text>
-    ) : null
+    )
   }
 
   if (loading) {
