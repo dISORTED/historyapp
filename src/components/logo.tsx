@@ -11,19 +11,21 @@ export default function Logo({ compact = false }: LogoProps) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: compact ? '4px 8px' : '6px 10px',
+        width: compact ? '100%' : '220px',
+        maxWidth: '100%',
+        padding: compact ? '2px' : '6px 10px',
         borderRadius: '12px',
-        background: '#ffffff',
-        border: '1px solid var(--border-light)',
+        background: compact ? 'transparent' : '#ffffff',
+        border: compact ? 'none' : '1px solid var(--border-light)',
       }}
     >
       <Image
         src="/brand/logo.png"
         alt="Logo STOTOMAS"
-        width={compact ? 132 : 172}
-        height={compact ? 44 : 56}
+        width={compact ? 150 : 196}
+        height={compact ? 50 : 64}
         priority
-        style={{ width: 'auto', height: 'auto', objectFit: 'contain' }}
+        style={{ width: '100%', height: 'auto', objectFit: 'contain', display: 'block' }}
       />
     </div>
   )

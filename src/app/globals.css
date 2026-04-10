@@ -635,6 +635,7 @@ a:hover {
 
 .app-sidebar-brand {
   padding: 2px 4px 8px;
+  width: 100%;
 }
 
 .app-sidebar-nav {

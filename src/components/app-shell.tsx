@@ -4,7 +4,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import Logo from './logo'
 
-type ShellSection = 'dashboard' | 'admin'
+type ShellSection = 'dashboard' | 'history' | 'admin'
 
 interface AppShellProps {
   section: ShellSection
@@ -30,6 +30,7 @@ export default function AppShell({
   children,
 }: AppShellProps) {
   const isDashboard = section === 'dashboard'
+  const isHistory = section === 'history'
   const isAdmin = section === 'admin'
 
   return (
@@ -42,6 +43,9 @@ export default function AppShell({
         <nav className="app-sidebar-nav">
           <Link href="/" className={`app-nav-link ${isDashboard ? 'active' : ''}`}>
             Dashboard
+          </Link>
+          <Link href="/historial" className={`app-nav-link ${isHistory ? 'active' : ''}`}>
+            Historial
           </Link>
           {showAdminLink && (
             <Link href="/admin" className={`app-nav-link ${isAdmin ? 'active' : ''}`}>

@@ -3,22 +3,18 @@
 import { useEffect, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import Link from 'next/link'
-import { createClient, getSessionSnapshot } from '@/lib/supabase-client'
-import IncidentForm from '@/components/incident-form'
-import IncidentsChart from '@/components/incidents-chart'
 import AuthComponent from '@/components/auth'
-import DashboardSidePanel from '@/components/dashboard-side-panel'
-import LiveClock from '@/components/live-clock'
 import Logo from '@/components/logo'
 import AppShell from '@/components/app-shell'
+import IncidentList from '@/components/incident-list'
+import { createClient, getSessionSnapshot } from '@/lib/supabase-client'
 import { isPrimaryAdmin } from '@/lib/admin'
 
-export default function Dashboard() {
+export default function HistorialPage() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
-
   const [appError, setAppError] = useState<string | null>(null)
+
   const [techName, setTechName] = useState('')
   const [savingName, setSavingName] = useState(false)
   const [nameError, setNameError] = useState<string | null>(null)
@@ -74,22 +70,18 @@ export default function Dashboard() {
       const { session, error, timedOut } = await getSessionSnapshot()
 
       if (!mountedRef.current) return
-
       if (error) {
         setAppError(error.message || 'No se pudo validar la sesion actual.')
         return
       }
-
       if (timedOut || session === undefined) return
 
       applyUserState(session?.user ?? null)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       const name = (e as { name?: string })?.name
-
       if (name === 'AbortError' || /aborted/i.test(msg)) return
       if (!mountedRef.current) return
-
       setAppError(msg || 'Error inesperado cargando la sesion.')
     }
   }
@@ -268,68 +260,23 @@ export default function Dashboard() {
 
   return (
     <AppShell
-      section="dashboard"
-      title="Dashboard operativo"
-      subtitle="Registro y seguimiento diario de atenciones tecnicas"
+      section="history"
+      title="Historial de incidencias"
+      subtitle="Consulta, filtra y gestiona incidencias registradas"
       userName={technicianName}
       userEmail={user.email || ''}
       onSignOut={handleSignOut}
       showAdminLink={isAdmin}
       topActions={
         <>
-          {isAdmin && (
-            <Link href="/admin" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
-              Ver panel admin
-            </Link>
-          )}
-          <span className="badge badge-info">Formato ticket: TK-0001</span>
+          <Link href="/" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+            Volver a Dashboard
+          </Link>
+          <span className="badge badge-info">Modulo historial</span>
         </>
       }
     >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.25fr) minmax(340px, 0.95fr)',
-          gap: '24px',
-          marginBottom: '24px',
-          alignItems: 'start',
-        }}
-        className="animate-fade-in dashboard-top-grid"
-      >
-        <div style={{ height: '100%' }}>
-          <IncidentForm onSuccess={() => setRefreshTrigger((prev) => prev + 1)} />
-        </div>
-        <div
-          className="dashboard-right-column"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: '320px',
-            gap: '16px',
-            width: '100%',
-          }}
-        >
-          <div className="dashboard-chart-panel" style={{ minHeight: '320px', width: '100%' }}>
-            <IncidentsChart refreshTrigger={refreshTrigger} />
-          </div>
-          <LiveClock />
-          <DashboardSidePanel refreshTrigger={refreshTrigger} />
-        </div>
-      </div>
-
-      <div className="card animate-fade-in" style={{ animationDelay: '100ms' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '18px' }}>Historial movido a seccion dedicada</h3>
-            <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-              Revisa y gestiona todas las incidencias desde la seccion Historial del sidebar.
-            </p>
-          </div>
-          <Link href="/historial" className="btn btn-primary" style={{ textDecoration: 'none' }}>
-            Ir a Historial
-          </Link>
-        </div>
-      </div>
+      <IncidentList refreshTrigger={0} />
     </AppShell>
   )
 }
