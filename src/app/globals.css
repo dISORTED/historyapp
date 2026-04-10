@@ -615,19 +615,135 @@ a:hover {
   background: transparent;
 }
 
-.app-header {
+.app-shell-layout {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+}
+
+.app-sidebar {
+  min-height: 100vh;
+  position: sticky;
+  top: 0;
+  padding: 20px 16px;
+  border-right: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.app-sidebar-brand {
+  padding: 2px 4px 8px;
+}
+
+.app-sidebar-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.app-nav-link {
+  display: block;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.app-nav-link:hover {
+  color: var(--text-primary);
+  background: var(--bg-subtle);
+  border-color: var(--border-light);
+}
+
+.app-nav-link.active {
+  color: var(--accent-primary);
+  background: var(--accent-soft);
+  border-color: #c7ddf2;
+}
+
+.app-sidebar-user {
+  margin-top: auto;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  padding: 12px;
+}
+
+.app-sidebar-user-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.app-sidebar-user-email {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.app-shell-content {
+  min-width: 0;
+}
+
+.app-topbar {
   position: sticky;
   top: 0;
   z-index: 100;
+  padding: 14px 24px;
   border-bottom: 1px solid var(--border-light);
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.app-topbar-title {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.app-topbar-subtitle {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.app-topbar-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .app-main {
   max-width: var(--container-max);
   margin: 0 auto;
   padding: 28px 24px 32px;
+}
+
+@media (max-width: 1024px) {
+  .app-shell-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .app-sidebar {
+    min-height: auto;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .app-sidebar-user {
+    margin-top: 8px;
+  }
 }
 
 .animate-fade-in {

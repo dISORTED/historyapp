@@ -2,23 +2,6 @@ import { createClient } from './supabase-client'
 import { buildLocalDayRange, toDateKey } from './date-utils'
 import { AdminIncidentFilters, CreateIncidentInput, Incident } from './types'
 
-function generateTicketCode() {
-  const now = new Date()
-  const datePart = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0'),
-  ].join('')
-  const timePart = [
-    String(now.getHours()).padStart(2, '0'),
-    String(now.getMinutes()).padStart(2, '0'),
-    String(now.getSeconds()).padStart(2, '0'),
-  ].join('')
-  const randomPart = Math.random().toString(36).slice(2, 6).toUpperCase()
-
-  return `TKT-${datePart}-${timePart}-${randomPart}`
-}
-
 export async function createIncident(incident: CreateIncidentInput) {
   const supabase = createClient()
   const {
@@ -35,7 +18,6 @@ export async function createIncident(incident: CreateIncidentInput) {
   // FORZAMOS responsible desde metadata (no desde el formulario)
   const payload = {
     ...incident,
-    ticket_code: incident.ticket_code || generateTicketCode(),
     responsible: technicianName,
     user_id: user.id,
   }
@@ -53,7 +35,7 @@ export async function getIncidents(searchTerm = '', dateFrom: string | null = nu
 
   if (searchTerm) {
     query = query.or(
-      `ticket_code.ilike.%${searchTerm}%,title.ilike.%${searchTerm}%,problem_description.ilike.%${searchTerm}%,actions_taken.ilike.%${searchTerm}%,affected_tool.ilike.%${searchTerm}%,responsible.ilike.%${searchTerm}%,attended_user.ilike.%${searchTerm}%`
+      `ticket_code.ilike.%${searchTerm}%,legacy_ticket_code.ilike.%${searchTerm}%,title.ilike.%${searchTerm}%,problem_description.ilike.%${searchTerm}%,actions_taken.ilike.%${searchTerm}%,affected_tool.ilike.%${searchTerm}%,responsible.ilike.%${searchTerm}%,attended_user.ilike.%${searchTerm}%`
     )
   }
 
@@ -190,7 +172,7 @@ export async function getAdminIncidents(filters: AdminIncidentFilters = {}): Pro
 
   if (filters.searchTerm) {
     query = query.or(
-      `ticket_code.ilike.%${filters.searchTerm}%,title.ilike.%${filters.searchTerm}%,problem_description.ilike.%${filters.searchTerm}%,actions_taken.ilike.%${filters.searchTerm}%,affected_tool.ilike.%${filters.searchTerm}%,responsible.ilike.%${filters.searchTerm}%,attended_user.ilike.%${filters.searchTerm}%`
+      `ticket_code.ilike.%${filters.searchTerm}%,legacy_ticket_code.ilike.%${filters.searchTerm}%,title.ilike.%${filters.searchTerm}%,problem_description.ilike.%${filters.searchTerm}%,actions_taken.ilike.%${filters.searchTerm}%,affected_tool.ilike.%${filters.searchTerm}%,responsible.ilike.%${filters.searchTerm}%,attended_user.ilike.%${filters.searchTerm}%`
     )
   }
 

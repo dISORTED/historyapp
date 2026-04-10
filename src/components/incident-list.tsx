@@ -32,6 +32,7 @@ function formatTime(value: string | null | undefined) {
 function toSearchableString(incident: Incident) {
   return [
     incident.ticket_code,
+    incident.legacy_ticket_code,
     incident.title,
     incident.problem_description,
     incident.actions_taken,
@@ -303,9 +304,16 @@ export default function IncidentList({ refreshTrigger }: IncidentListProps) {
                 {paginatedIncidents.map((incident) => (
                   <tr key={incident.id}>
                     <td>
-                      <span className="badge badge-info" style={{ whiteSpace: 'nowrap' }}>
-                        {incident.ticket_code || incident.id.slice(0, 8).toUpperCase()}
-                      </span>
+                      <div style={{ display: 'grid', gap: '4px' }}>
+                        <span className="badge badge-info" style={{ whiteSpace: 'nowrap' }}>
+                          {incident.ticket_code || incident.id.slice(0, 8).toUpperCase()}
+                        </span>
+                        {incident.legacy_ticket_code && (
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            Legado: {incident.legacy_ticket_code}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <span

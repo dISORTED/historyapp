@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import AuthComponent from '@/components/auth'
-import Logo from '@/components/logo'
+import AppShell from '@/components/app-shell'
 import AdminKpiCards from '@/components/admin-kpi-cards'
 import AdminTrendChart from '@/components/admin-trend-chart'
 import AdminBreakdownChart from '@/components/admin-breakdown-chart'
@@ -26,6 +26,7 @@ function toHourLabel(value: string | null | undefined): string {
 function toSearchableString(incident: Incident) {
   return [
     incident.ticket_code,
+    incident.legacy_ticket_code,
     incident.title,
     incident.problem_description,
     incident.actions_taken,
@@ -75,10 +76,7 @@ export default function AdminPage() {
           setError(sessionError.message || 'No se pudo cargar la sesion')
           return
         }
-
-        if (timedOut || session === undefined) {
-          return
-        }
+        if (timedOut || session === undefined) return
 
         setUser(session?.user ?? null)
       } catch (err) {
@@ -205,7 +203,6 @@ export default function AdminPage() {
 
   const trendData = useMemo(() => {
     const byDate: Record<string, number> = {}
-
     incidents.forEach((item) => {
       const key = toDateKey(getTimelineValue(item))
       if (!key) return
@@ -219,12 +216,10 @@ export default function AdminPage() {
 
   const bySystemData = useMemo(() => {
     const bySystem: Record<string, number> = {}
-
     incidents.forEach((item) => {
       const key = item.affected_tool?.trim() || 'Sin sistema'
       bySystem[key] = (bySystem[key] || 0) + 1
     })
-
     return Object.entries(bySystem)
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count)
@@ -233,12 +228,10 @@ export default function AdminPage() {
 
   const byTechnicianData = useMemo(() => {
     const byTech: Record<string, number> = {}
-
     incidents.forEach((item) => {
       const key = item.responsible?.trim() || 'Sin tecnico'
       byTech[key] = (byTech[key] || 0) + 1
     })
-
     return Object.entries(byTech)
       .map(([label, count]) => ({ label, count }))
       .sort((a, b) => b.count - a.count)
@@ -259,7 +252,6 @@ export default function AdminPage() {
   }, [incidents])
 
   const totalPages = Math.max(1, Math.ceil(sortedIncidents.length / pageSize))
-
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages)
   }, [currentPage, totalPages])
@@ -317,294 +309,277 @@ export default function AdminPage() {
     )
   }
 
+  const userName = user.user_metadata?.name ? String(user.user_metadata.name) : user.email || 'Administrador'
+
   return (
-    <div className="app-shell">
-      <header className="app-header">
+    <AppShell
+      section="admin"
+      title="Panel admin"
+      subtitle="Vista analitica global de incidencias y carga operativa"
+      userName={userName}
+      userEmail={user.email || ''}
+      onSignOut={handleSignOut}
+      showAdminLink
+      topActions={
+        <>
+          <Link href="/" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+            Ir al dashboard
+          </Link>
+          <span className="badge badge-info">Modo analitico</span>
+        </>
+      }
+    >
+      <section className="card" style={{ marginBottom: '20px' }}>
         <div
           style={{
-            maxWidth: 'var(--container-max)',
-            margin: '0 auto',
             display: 'flex',
-            alignItems: 'center',
             justifyContent: 'space-between',
+            alignItems: 'flex-start',
             gap: '16px',
+            marginBottom: '20px',
             flexWrap: 'wrap',
-            padding: '14px 24px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <Logo />
-            <div style={{ borderLeft: '1px solid var(--border-light)', paddingLeft: '16px' }}>
-              <div className="badge badge-info" style={{ marginBottom: '10px' }}>
-                Centro de control
-              </div>
-              <h1 style={{ margin: 0, fontSize: '24px', letterSpacing: '-0.02em' }}>Panel Admin</h1>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                Vista global de incidencias, carga operativa y sistemas mas afectados
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <Link href="/" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
-              Ir al dashboard
-            </Link>
-            <button className="btn btn-secondary" onClick={handleSignOut}>
-              Cerrar sesion
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="app-main">
-        <section className="card" style={{ marginBottom: '20px' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              gap: '16px',
-              marginBottom: '20px',
-              flexWrap: 'wrap',
-            }}
-          >
-            <div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: '12px',
-                  color: 'var(--accent-primary)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  fontWeight: 700,
-                }}
-              >
-                Filtros de analitica
-              </p>
-              <h2 style={{ margin: '8px 0 0', fontSize: '22px', letterSpacing: '-0.02em' }}>Ajusta el panorama operativo</h2>
-              <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                Cruza periodos, responsables y sistemas para detectar focos criticos.
-              </p>
-            </div>
-
-            <div
+          <div>
+            <p
               style={{
-                padding: '12px 14px',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-light)',
-                background: 'var(--bg-elevated)',
-                minWidth: '220px',
+                margin: 0,
+                fontSize: '12px',
+                color: 'var(--accent-primary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                fontWeight: 700,
               }}
             >
-              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Registros en vista</p>
-              <p style={{ margin: '6px 0 0', fontSize: '28px', fontWeight: 800 }}>{incidents.length}</p>
-              <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>Resultado del filtro activo</p>
-            </div>
+              Filtros de analitica
+            </p>
+            <h2 style={{ margin: '8px 0 0', fontSize: '22px', letterSpacing: '-0.02em' }}>Ajusta el panorama operativo</h2>
+            <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              Cruza periodos, responsables y sistemas para detectar focos criticos.
+            </p>
           </div>
+
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-light)',
+              background: 'var(--bg-elevated)',
+              minWidth: '220px',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Registros en vista</p>
+            <p style={{ margin: '6px 0 0', fontSize: '28px', fontWeight: 800 }}>{incidents.length}</p>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>Resultado del filtro activo</p>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '16px',
+            alignItems: 'end',
+          }}
+        >
+          <div>
+            <label>Buscar</label>
+            <input
+              type="text"
+              value={searchTerm}
+              placeholder="Ticket, titulo, descripcion, usuario, tecnico..."
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </div>
+
+          <div>
+            <label>Desde</label>
+            <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
+          </div>
+
+          <div>
+            <label>Hasta</label>
+            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+          </div>
+
+          <div>
+            <label>Tecnico</label>
+            <select value={technician} onChange={(event) => setTechnician(event.target.value)}>
+              <option value="">Todos</option>
+              {technicians.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label>Sistema (zona)</label>
+            <select value={affectedTool} onChange={(event) => setAffectedTool(event.target.value)}>
+              <option value="">Todos</option>
+              {affectedTools.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button className="btn btn-secondary" onClick={clearFilters} style={{ minHeight: '46px' }}>
+            Limpiar filtros
+          </button>
+        </div>
+      </section>
+
+      {error && (
+        <div className="card" style={{ marginBottom: '20px', borderColor: '#f2c6ca', background: 'var(--color-error-bg)' }}>
+          <p style={{ margin: 0, color: 'var(--color-error)' }}>{error}</p>
+        </div>
+      )}
+
+      {loadingData ? (
+        <div className="card" style={{ textAlign: 'center' }}>
+          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Cargando analitica global...</p>
+        </div>
+      ) : (
+        <>
+          <AdminKpiCards metrics={metrics} />
 
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
               gap: '16px',
-              alignItems: 'end',
+              marginTop: '18px',
             }}
           >
-            <div>
-              <label>Buscar</label>
-              <input
-                type="text"
-                value={searchTerm}
-                placeholder="Ticket, titulo, descripcion, usuario, tecnico..."
-                onChange={(event) => setSearchTerm(event.target.value)}
-              />
-            </div>
-
-            <div>
-              <label>Desde</label>
-              <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
-            </div>
-
-            <div>
-              <label>Hasta</label>
-              <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
-            </div>
-
-            <div>
-              <label>Tecnico</label>
-              <select value={technician} onChange={(event) => setTechnician(event.target.value)}>
-                <option value="">Todos</option>
-                {technicians.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label>Sistema (zona)</label>
-              <select value={affectedTool} onChange={(event) => setAffectedTool(event.target.value)}>
-                <option value="">Todos</option>
-                {affectedTools.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button className="btn btn-secondary" onClick={clearFilters} style={{ minHeight: '46px' }}>
-              Limpiar filtros
-            </button>
+            <AdminTrendChart data={trendData} />
+            <AdminBreakdownChart title="Sistemas mas afectados" subtitle="Top por volumen de incidencias" data={bySystemData} />
+            <AdminBreakdownChart title="Tecnicos con mas casos" subtitle="Participacion por responsable" data={byTechnicianData} />
           </div>
-        </section>
 
-        {error && (
-          <div className="card" style={{ marginBottom: '20px', borderColor: '#f2c6ca', background: 'var(--color-error-bg)' }}>
-            <p style={{ margin: 0, color: 'var(--color-error)' }}>{error}</p>
-          </div>
-        )}
-
-        {loadingData ? (
-          <div className="card" style={{ textAlign: 'center' }}>
-            <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Cargando analitica global...</p>
-          </div>
-        ) : (
-          <>
-            <AdminKpiCards metrics={metrics} />
-
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                gap: '16px',
-                marginTop: '18px',
-              }}
-            >
-              <AdminTrendChart data={trendData} />
-              <AdminBreakdownChart title="Sistemas mas afectados" subtitle="Top por volumen de incidencias" data={bySystemData} />
-              <AdminBreakdownChart title="Tecnicos con mas casos" subtitle="Participacion por responsable" data={byTechnicianData} />
+          <div className="card" style={{ marginTop: '18px' }}>
+            <div style={{ marginBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>Ultimas incidencias del panorama</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                Mostrando {shownFrom}-{shownTo} de {sortedIncidents.length} registros filtrados
+              </p>
             </div>
 
-            <div className="card" style={{ marginTop: '18px' }}>
-              <div style={{ marginBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>Ultimas incidencias del panorama</h3>
-                <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  Mostrando {shownFrom}-{shownTo} de {sortedIncidents.length} registros filtrados
-                </p>
-              </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th>Ticket</th>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                    <th>Titulo</th>
+                    <th>Sistema</th>
+                    <th>Tecnico</th>
+                    <th>Usuario</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedIncidents.map((incident) => {
+                    const parsedAttention = parseStoredDate(incident.attention_datetime)
+                    const hourLabel =
+                      parsedAttention && !Number.isNaN(parsedAttention.getTime())
+                        ? parsedAttention.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+                        : '-'
 
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%' }}>
-                  <thead>
-                    <tr>
-                      <th>Ticket</th>
-                      <th>Fecha</th>
-                      <th>Hora</th>
-                      <th>Titulo</th>
-                      <th>Sistema</th>
-                      <th>Tecnico</th>
-                      <th>Usuario</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedIncidents.map((incident) => {
-                      const parsedAttention = parseStoredDate(incident.attention_datetime)
-                      const hourLabel =
-                        parsedAttention && !Number.isNaN(parsedAttention.getTime())
-                          ? parsedAttention.toLocaleTimeString('es-CL', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : '-'
-
-                      return (
-                        <tr key={incident.id}>
-                          <td>
+                    return (
+                      <tr key={incident.id}>
+                        <td>
+                          <div style={{ display: 'grid', gap: '4px' }}>
                             <span className="badge badge-info" style={{ whiteSpace: 'nowrap' }}>
                               {incident.ticket_code || incident.id.slice(0, 8).toUpperCase()}
                             </span>
-                          </td>
-                          <td>
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '4px 10px',
-                                background: 'var(--bg-elevated)',
-                                borderRadius: 'var(--radius-sm)',
-                                fontSize: '13px',
-                              }}
-                            >
-                              {toDateKey(getTimelineValue(incident)) || '-'}
-                            </span>
-                          </td>
-                          <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{hourLabel}</td>
-                          <td>
-                            <span style={{ fontWeight: 700 }}>{incident.title}</span>
-                          </td>
-                          <td>
-                            <span className="badge badge-info">{incident.affected_tool}</span>
-                          </td>
-                          <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{incident.responsible}</td>
-                          <td>{incident.attended_user || '-'}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                            {incident.legacy_ticket_code && (
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                Legado: {incident.legacy_ticket_code}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '4px 10px',
+                              background: 'var(--bg-elevated)',
+                              borderRadius: 'var(--radius-sm)',
+                              fontSize: '13px',
+                            }}
+                          >
+                            {toDateKey(getTimelineValue(incident)) || '-'}
+                          </span>
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{hourLabel}</td>
+                        <td>
+                          <span style={{ fontWeight: 700 }}>{incident.title}</span>
+                        </td>
+                        <td>
+                          <span className="badge badge-info">{incident.affected_tool}</span>
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{incident.responsible}</td>
+                        <td>{incident.attended_user || '-'}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '12px',
+                marginTop: '14px',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ margin: 0 }}>Filas por pagina</label>
+                <select
+                  value={pageSize}
+                  onChange={(event) => {
+                    setPageSize(Number(event.target.value))
+                    setCurrentPage(1)
+                  }}
+                  style={{ width: '84px', padding: '8px 10px' }}
+                >
+                  <option value={12}>12</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
               </div>
 
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '12px',
-                  marginTop: '14px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <label style={{ margin: 0 }}>Filas por pagina</label>
-                  <select
-                    value={pageSize}
-                    onChange={(event) => {
-                      setPageSize(Number(event.target.value))
-                      setCurrentPage(1)
-                    }}
-                    style={{ width: '84px', padding: '8px 10px' }}
-                  >
-                    <option value={12}>12</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                  </select>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Anterior
-                  </button>
-                  <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    Pagina {currentPage} de {totalPages}
-                  </span>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setCurrentPage((value) => Math.min(totalPages, value + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Siguiente
-                  </button>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Anterior
+                </button>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  Pagina {currentPage} de {totalPages}
+                </span>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setCurrentPage((value) => Math.min(totalPages, value + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Siguiente
+                </button>
               </div>
             </div>
-          </>
-        )}
-      </main>
-    </div>
+          </div>
+        </>
+      )}
+    </AppShell>
   )
 }

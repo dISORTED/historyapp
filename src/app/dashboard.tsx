@@ -11,6 +11,7 @@ import AuthComponent from '@/components/auth'
 import DashboardSidePanel from '@/components/dashboard-side-panel'
 import LiveClock from '@/components/live-clock'
 import Logo from '@/components/logo'
+import AppShell from '@/components/app-shell'
 import { isPrimaryAdmin } from '@/lib/admin'
 
 export default function Dashboard() {
@@ -80,20 +81,16 @@ export default function Dashboard() {
         return
       }
 
-      if (timedOut || session === undefined) {
-        return
-      }
+      if (timedOut || session === undefined) return
 
       applyUserState(session?.user ?? null)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
       const name = (e as { name?: string })?.name
 
-      if (name === 'AbortError' || /aborted/i.test(msg)) {
-        return
-      }
-
+      if (name === 'AbortError' || /aborted/i.test(msg)) return
       if (!mountedRef.current) return
+
       setAppError(msg || 'Error inesperado cargando la sesion.')
     }
   }
@@ -141,7 +138,6 @@ export default function Dashboard() {
     }
 
     init()
-
     return () => data.subscription?.unsubscribe()
   }, [])
 
@@ -161,9 +157,7 @@ export default function Dashboard() {
     setSavingName(true)
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.updateUser({
-        data: { name: clean },
-      })
+      const { error } = await supabase.auth.updateUser({ data: { name: clean } })
       if (error) throw error
 
       setNameDirty(false)
@@ -201,31 +195,7 @@ export default function Dashboard() {
   if (appError) {
     return (
       <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-        <div
-          className="card"
-          style={{
-            width: '100%',
-            maxWidth: '480px',
-            borderColor: '#f2c6ca',
-            textAlign: 'center',
-          }}
-        >
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              margin: '0 auto 20px',
-              background: 'var(--color-error-bg)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '24px',
-              color: 'var(--color-error)',
-            }}
-          >
-            !
-          </div>
+        <div className="card" style={{ width: '100%', maxWidth: '480px', borderColor: '#f2c6ca', textAlign: 'center' }}>
           <h2 style={{ marginTop: 0, marginBottom: '12px', fontSize: '20px' }}>Error de conexion</h2>
           <p style={{ fontSize: '14px', marginBottom: '24px', color: 'var(--text-secondary)' }}>{appError}</p>
           <button onClick={() => location.reload()} className="btn btn-primary">
@@ -253,12 +223,11 @@ export default function Dashboard() {
     return (
       <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
         <div className="card" style={{ width: '100%', maxWidth: '520px', padding: '32px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '22px' }}>
             <Logo />
           </div>
-
           <h2 style={{ marginTop: 0, marginBottom: '8px', fontSize: '22px', fontWeight: 800 }}>Bienvenido a STOTOMAS</h2>
-          <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '28px' }}>
+          <p style={{ marginTop: 0, fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '22px' }}>
             Para comenzar, ingresa tu nombre de tecnico.
           </p>
 
@@ -271,7 +240,6 @@ export default function Dashboard() {
               setNameDirty(true)
             }}
             placeholder="Ej: Sebastian Echeverria"
-            style={{ width: '100%', padding: '14px 16px', fontSize: '15px' }}
             autoFocus
           />
 
@@ -291,24 +259,8 @@ export default function Dashboard() {
             </div>
           )}
 
-          <button
-            onClick={saveTechnicianName}
-            disabled={savingName}
-            className="btn btn-primary"
-            style={{ width: '100%', marginTop: '20px', padding: '14px' }}
-          >
+          <button onClick={saveTechnicianName} disabled={savingName} className="btn btn-primary" style={{ width: '100%', marginTop: '18px' }}>
             {savingName ? 'Guardando...' : 'Continuar'}
-          </button>
-
-          <button
-            onClick={async () => {
-              const supabase = createClient()
-              await supabase.auth.signOut()
-            }}
-            className="btn btn-secondary"
-            style={{ width: '100%', marginTop: '12px' }}
-          >
-            Cerrar sesion
           </button>
         </div>
       </div>
@@ -316,100 +268,59 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
+    <AppShell
+      section="dashboard"
+      title="Historial de incidencias"
+      subtitle="Registro operativo y seguimiento de tickets tecnicos"
+      userName={technicianName}
+      userEmail={user.email || ''}
+      onSignOut={handleSignOut}
+      showAdminLink={isAdmin}
+      topActions={
+        <>
+          {isAdmin && (
+            <Link href="/admin" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+              Ver panel admin
+            </Link>
+          )}
+          <span className="badge badge-info">Formato ticket: TK-0001</span>
+        </>
+      }
+    >
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.25fr) minmax(340px, 0.95fr)',
+          gap: '24px',
+          marginBottom: '24px',
+          alignItems: 'start',
+        }}
+        className="animate-fade-in dashboard-top-grid"
+      >
+        <div style={{ height: '100%' }}>
+          <IncidentForm onSuccess={() => setRefreshTrigger((prev) => prev + 1)} />
+        </div>
         <div
+          className="dashboard-right-column"
           style={{
-            maxWidth: 'var(--container-max)',
-            margin: '0 auto',
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '14px',
-            flexWrap: 'wrap',
-            padding: '14px 24px',
+            flexDirection: 'column',
+            minHeight: '320px',
+            gap: '16px',
+            width: '100%',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <Logo />
-            <div style={{ paddingLeft: '16px', borderLeft: '1px solid var(--border-light)' }}>
-              <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 800, letterSpacing: '-0.01em' }}>Historial de Incidencias</h1>
-              <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                Registro de soluciones tecnicas
-              </p>
-            </div>
+          <div className="dashboard-chart-panel" style={{ minHeight: '320px', width: '100%' }}>
+            <IncidentsChart refreshTrigger={refreshTrigger} />
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {isAdmin && (
-              <Link href="/admin" className="btn btn-secondary" style={{ textDecoration: 'none', padding: '8px 14px' }}>
-                Panel admin
-              </Link>
-            )}
-            <button onClick={handleSignOut} className="btn btn-secondary" style={{ padding: '8px 14px' }}>
-              Cerrar sesion
-            </button>
-            <div style={{ textAlign: 'right', marginLeft: '6px' }}>
-              <p style={{ margin: 0, fontWeight: 700 }}>{technicianName}</p>
-              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>{user.email}</p>
-            </div>
-            <div
-              style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                background: 'var(--accent-soft)',
-                border: '1px solid #c7ddf2',
-                color: 'var(--accent-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: '15px',
-              }}
-            >
-              {technicianName.charAt(0).toUpperCase()}
-            </div>
-          </div>
+          <LiveClock />
+          <DashboardSidePanel refreshTrigger={refreshTrigger} />
         </div>
-      </header>
+      </div>
 
-      <main className="app-main">
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.25fr) minmax(340px, 0.95fr)',
-            gap: '24px',
-            marginBottom: '24px',
-            alignItems: 'start',
-          }}
-          className="animate-fade-in dashboard-top-grid"
-        >
-          <div style={{ height: '100%' }}>
-            <IncidentForm onSuccess={() => setRefreshTrigger((prev) => prev + 1)} />
-          </div>
-          <div
-            className="dashboard-right-column"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              minHeight: '320px',
-              gap: '16px',
-              width: '100%',
-            }}
-          >
-            <div className="dashboard-chart-panel" style={{ minHeight: '320px', width: '100%' }}>
-              <IncidentsChart refreshTrigger={refreshTrigger} />
-            </div>
-            <LiveClock />
-            <DashboardSidePanel refreshTrigger={refreshTrigger} />
-          </div>
-        </div>
-
-        <div className="animate-fade-in" style={{ animationDelay: '100ms' }}>
-          <IncidentList refreshTrigger={refreshTrigger} />
-        </div>
-      </main>
-    </div>
+      <div className="animate-fade-in" style={{ animationDelay: '100ms' }}>
+        <IncidentList refreshTrigger={refreshTrigger} />
+      </div>
+    </AppShell>
   )
 }

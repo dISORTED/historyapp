@@ -258,6 +258,11 @@ export default function IncidentDetail({ incident, onClose, onUpdate }: Incident
               <div className="card" style={{ padding: '14px', background: 'var(--bg-elevated)', boxShadow: 'none' }}>
                 <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Ticket</p>
                 <p style={{ margin: 0, fontWeight: 700 }}>{incident.ticket_code || incident.id.slice(0, 8).toUpperCase()}</p>
+                {incident.legacy_ticket_code && (
+                  <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
+                    Legado: {incident.legacy_ticket_code}
+                  </p>
+                )}
               </div>
               <div className="card" style={{ padding: '14px', background: 'var(--bg-elevated)', boxShadow: 'none' }}>
                 <p style={{ margin: '0 0 4px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Fecha</p>

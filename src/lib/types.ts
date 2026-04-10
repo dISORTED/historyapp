@@ -1,6 +1,7 @@
 export interface Incident {
   id: string
   ticket_code: string | null
+  legacy_ticket_code?: string | null
   created_at: string
 
   // Campo existente (lo mantenemos por compatibilidad)
