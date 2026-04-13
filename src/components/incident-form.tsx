@@ -13,6 +13,37 @@ interface IncidentFormProps {
   onSuccess: () => void
 }
 
+const INCIDENT_CATEGORIES = [
+  '00.BANNER.02',
+  '01.CUENTAS DE USUARIOS',
+  '02.CORREO ELECTRONICO',
+  '04.MS OFFICE / O365',
+  '05.MI INTRANET',
+  '06.BIBLIOTECA',
+  '07.MI PORTAL',
+  '08.E-LEARNING',
+  '12.ADMISION',
+  '13.INTERNET',
+  '14.ESTACION DE TRABAJO',
+  '15.SISTEMA OPERATIVO',
+  '16.SOFTWARE',
+  '17.PERIFERICO',
+  '18.IMPRESORA',
+  '19.RECURSOS COMPARTIDOS',
+  '20.RED',
+  '21.LYNC',
+  '22.TELEFONIA',
+  '23.WIFI',
+  '24.PEOPLESOFT',
+  '25.CONTRATOS ELECTRONICOS',
+  '26.CITRIX',
+  '27.PORTAL DE CONVENIOS',
+  '28.TITULACION',
+  '33.CONTROL DE',
+  '34.BIIND',
+  '34.CRM-ELOQUA',
+]
+
 function createInitialFormData(responsible = ''): CreateIncidentInput {
   return {
     resolution_date: toLocalDateValue(new Date()),
@@ -57,7 +88,7 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
     fetchUserName()
   }, [])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
@@ -209,14 +240,16 @@ export default function IncidentForm({ onSuccess }: IncidentFormProps) {
 
         <div style={{ marginBottom: '20px' }}>
           <label>Sistema afectado *</label>
-          <input
-            type="text"
-            name="affected_tool"
-            placeholder="Herramienta o sistema"
-            value={formData.affected_tool}
-            onChange={handleChange}
-            required
-          />
+          <select name="affected_tool" value={formData.affected_tool} onChange={handleChange} required>
+            <option value="" disabled>
+              Selecciona una categoria
+            </option>
+            {INCIDENT_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div style={{ marginBottom: '20px' }}>
